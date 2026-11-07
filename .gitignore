@@ -1,0 +1,71 @@
+# Swift Package Manager / Xcode build output
+.build/
+.swiftpm/
+/build/
+/dist/
+DerivedData/
+*.app/
+*.dSYM/
+*.dSYM.zip
+*.xcresult/
+
+# Xcode settings specific to this computer
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+
+# Local smoke-test data, screenshots and diagnostics
+.smoke-*/
+
+# Personal journals and SQLite companion files
+*.sqlite
+*.sqlite3
+*.db
+*.sqlite-*
+*.sqlite3-*
+*.db-*
+*.sqlite.lock
+*.sqlite3.lock
+*.db.lock
+
+# Backups and exports created by Nhip
+Nhip-backup*.json
+before-restore-*.json
+Nhip-*.csv
+/backups/
+
+# Python launcher caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environment variables (keep example templates)
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Private signing certificates and profiles
+*.p12
+*.pfx
+*.mobileprovision
+*.provisionprofile
+
+# Editor-local settings and temporary files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.log
+
+# macOS / Finder metadata
+.DS_Store
+.AppleDouble/
+.LSOverride
+._*
