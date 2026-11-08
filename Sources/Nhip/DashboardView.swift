@@ -40,10 +40,16 @@ struct DashboardView: View {
                         HStack { Text(notice).font(.callout); Spacer(); Button("Đóng") { model.notice = nil } }.padding(12).background(.indigo.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
                     }
                     controls
-                    metrics
-                    if model.showAllTimeSummary { allTimeContent }
-                    else if period == .day { dayContent }
-                    else { trendContent }
+                    if model.showAllTimeSummary { goalCompletionContent }
+                    if model.showAllTimeSummary {
+                        allTimeContent
+                    } else {
+                        metrics
+                        if period == .day {
+                            dayContent
+                        }
+                        else { trendContent }
+                    }
                 }.padding(28)
             }.background(Color(nsColor: .windowBackgroundColor))
                 .id(model.showAllTimeSummary ? "all-time" : period.rawValue)
@@ -82,7 +88,7 @@ struct DashboardView: View {
                     .foregroundStyle(model.showGoals ? .indigo : .primary)
             }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
             Button { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true } label: {
-                HStack(spacing: 12) { Image(systemName: "figure.walk").frame(width: 20); Text("Hoạt động cá nhân").fontWeight(.medium); Spacer() }
+                HStack(spacing: 12) { Image(systemName: "figure.walk").frame(width: 20); Text("Hoạt động hàng ngày").fontWeight(.medium).lineLimit(1).minimumScaleFactor(0.8); Spacer() }
                     .padding(12).background(model.showPersonalActivities ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
                     .foregroundStyle(model.showPersonalActivities ? .indigo : .primary)
             }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
@@ -108,7 +114,9 @@ struct DashboardView: View {
                 }
             }
             Spacer()
-            Button { editor = EntryDraft(date: model.showAllTimeSummary ? Date() : selectedDate, calendar: calendar, activityID: model.activeActivities.first?.id) } label: { Label("Thêm hoạt động", systemImage: "plus") }.buttonStyle(.borderedProminent).tint(.indigo)
+            if !model.showAllTimeSummary && period == .day {
+                Button { editor = EntryDraft(date: selectedDate, calendar: calendar, activityID: model.activeActivities.first?.id) } label: { Label("Thêm hoạt động", systemImage: "plus") }.buttonStyle(.borderedProminent).tint(.indigo)
+            }
         }
     }
     private var headerTitle: String {
@@ -123,7 +131,7 @@ struct DashboardView: View {
     private var controls: some View {
         HStack(spacing: 12) {
             if model.showAllTimeSummary {
-                Label("Toàn bộ lịch sử", systemImage: "clock.arrow.circlepath").foregroundStyle(.secondary)
+                Text("Xin chào \(model.userName)!").foregroundStyle(.secondary)
             } else {
             Button { move(-1) } label: { Image(systemName: "chevron.left") }.accessibilityLabel("\(period.rawValue) trước")
             periodSelector
@@ -136,7 +144,6 @@ struct DashboardView: View {
             }.labelsHidden().frame(width: 170)
             }
             if model.showAllTimeSummary { Spacer() }
-            Button { model.exportCSV(range: range) } label: { Image(systemName: "square.and.arrow.up") }.help(model.showAllTimeSummary ? "Xuất CSV toàn bộ lịch sử" : "Xuất CSV của kỳ đang xem")
         }
     }
     @ViewBuilder private var periodSelector: some View {
@@ -206,13 +213,26 @@ struct DashboardView: View {
         }
     }
     private var metrics: some View {
-        // These three overview totals always cover the whole selected period,
+        // Overview totals always cover the whole selected period,
         // independently of the activity filter used by the detailed charts.
         let totals = Reports.summarize(model.journal, range: range).totals
-        return HStack(spacing: 14) {
-            metric("Học", seconds: summarySeconds(named: "Học", totals: totals), icon: "book.fill", color: .indigo)
-            metric("Nghiên cứu", seconds: summarySeconds(named: "Nghiên cứu", totals: totals), icon: "magnifyingglass", color: .teal)
-            metric("Tập thể thao", seconds: summarySeconds(named: "Tập thể thao", totals: totals), icon: "figure.run", color: .orange)
+        return Group {
+            if model.showAllTimeSummary {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 14) {
+                    metric("Học", seconds: summarySeconds(named: "Học", totals: totals), icon: "book.fill", color: .indigo)
+                    metric("Nghiên cứu", seconds: summarySeconds(named: "Nghiên cứu", totals: totals), icon: "magnifyingglass", color: .teal)
+                    metric("Làm việc", seconds: summarySeconds(named: "Công việc", totals: totals) + summarySeconds(named: "Làm việc", totals: totals), icon: "briefcase.fill", color: .blue)
+                    metric("Tập thể thao", seconds: summarySeconds(named: "Tập thể thao", totals: totals), icon: "figure.run", color: .orange)
+                    metric("Nghỉ ngơi", seconds: summarySeconds(named: "Nghỉ ngơi", totals: totals), icon: "cup.and.saucer.fill", color: Color(hex: "84A65B"))
+                    metric("Giải trí", seconds: summarySeconds(named: "Giải trí", totals: totals), icon: "gamecontroller.fill", color: .pink)
+                }
+            } else {
+                HStack(spacing: 14) {
+                    metric("Học", seconds: summarySeconds(named: "Học", totals: totals), icon: "book.fill", color: .indigo)
+                    metric("Nghiên cứu", seconds: summarySeconds(named: "Nghiên cứu", totals: totals), icon: "magnifyingglass", color: .teal)
+                    metric("Tập thể thao", seconds: summarySeconds(named: "Tập thể thao", totals: totals), icon: "figure.run", color: .orange)
+                }
+            }
         }
     }
     private func summarySeconds(named name: String, totals: [UUID: Double]) -> Double {
@@ -238,6 +258,8 @@ struct DashboardView: View {
             return left == right ? lhs.offset < rhs.offset : left > right
         }.map(\.element)
         return Card(title: "Thời gian theo từng hoạt động") {
+            metrics
+            Divider()
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("Tổng cộng").font(.callout).foregroundStyle(.secondary)
@@ -278,6 +300,32 @@ struct DashboardView: View {
             }
         }
     }
+    private var goalCompletionContent: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let summary = GoalReports.completionSummary(model.journal, now: context.date)
+            Card(title: "Nhiệm vụ đã hoàn thành") {
+                HStack(alignment: .top, spacing: 16) {
+                    goalCompletionMetric("Nhiệm vụ ngày", count: summary.daily, icon: "sun.max.fill", color: .indigo)
+                    goalCompletionMetric("Nhiệm vụ tuần", count: summary.weekly, icon: "calendar", color: .teal)
+                }
+            }
+        }
+    }
+    private func goalCompletionMetric(_ title: String, count: GoalCompletionCount, icon: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: icon).font(.headline).foregroundStyle(color)
+            Text("\(count.completed)/\(count.total)").font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
+            Text(count.total == 0 ? "Chưa có nhiệm vụ" : "nhiệm vụ đã hoàn thành").font(.callout).foregroundStyle(.secondary)
+            HStack {
+                Text("Tỷ lệ hoàn thành").foregroundStyle(.secondary)
+                Spacer()
+                if let rate = count.rate { Text(rate, format: .percent.precision(.fractionLength(1))).fontWeight(.semibold) }
+                else { Text("—") }
+            }.font(.callout)
+            ProgressView(value: count.rate ?? 0).tint(color)
+        }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
+            .background(color.opacity(0.07), in: RoundedRectangle(cornerRadius: 16))
+    }
     private var onboarding: some View {
         Card(title: "Chào bạn, đây là Nhịp") {
             Text("Sau mỗi 5 phút, bảng ghi nhận nhanh tự hiện. Bấm vào ô hoạt động để ghi nhận ngay; bỏ qua thì khoảng đó được để trống. Dữ liệu chỉ lưu trên máy.").foregroundStyle(.secondary)
@@ -295,6 +343,7 @@ struct DashboardView: View {
             Card(title: "Dòng thời gian · \(model.dateLabel(selectedDate))") {
                 DayTimeline(model: model, range: range, filter: filter)
             }
+            dailyPriorityContent
             Card(title: "Thời gian theo hoạt động") { activityBreakdown }
             Card(title: "Chi tiết hoạt động") {
                 let entries = model.journal.entries.filter { $0.end > range.start && $0.start < range.end && (filter == nil || filter == $0.activityID) }.sorted { $0.start < $1.start }
@@ -361,20 +410,75 @@ struct DashboardView: View {
         }
     }
     private var comparison: some View {
-        let ranges = Reports.comparisonRanges(period: period, date: selectedDate, now: Date(), calendar: calendar)
-        let current = Reports.summarize(model.journal, range: ranges.0, activityID: filter)
-        let previous = Reports.summarize(model.journal, range: ranges.1, activityID: filter)
-        let delta = current.total - previous.total
+        let now = Date()
+        let priority = Reports.priorityComparison(model.journal, period: period, date: selectedDate, now: now)
+        let delta = priority.deltaSeconds
         return VStack(alignment: .leading, spacing: 8) {
             Divider()
-            HStack {
-                Image(systemName: delta >= 0 ? "arrow.up.right" : "arrow.down.right").foregroundStyle(.indigo)
-                Text("\(delta >= 0 ? "Tăng" : "Giảm") \(durationText(abs(delta))) đã ghi nhận so với kỳ trước").font(.callout.bold())
-                if previous.total > 0 { Text(String(format: "(%+.1f%%)", delta / previous.total * 100)).font(.callout).foregroundStyle(.secondary) }
+            if priority.activityIDs.isEmpty {
+                HStack {
+                    Text("Chưa chọn hoạt động ưu tiên").font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Chọn trong Cài đặt") { WindowManager.shared.showSettings(tab: 1) }
+                }
+            } else {
+                HStack {
+                    Image(systemName: delta > 0 ? "arrow.up.right" : (delta < 0 ? "arrow.down.right" : "equal")).foregroundStyle(.indigo)
+                    if delta == 0 {
+                        Text("Thời gian ưu tiên bằng kỳ trước").font(.callout.bold())
+                    } else {
+                        Text("\(delta > 0 ? "Tăng" : "Giảm") \(durationText(abs(delta))) ưu tiên so với kỳ trước").font(.callout.bold())
+                    }
+                    if let change = priority.changeFraction { Text(String(format: "(%+.1f%%)", change * 100)).font(.callout).foregroundStyle(.secondary) }
+                }
+                if priority.changeFraction == nil { Text("Không đủ cơ sở tính %.").font(.caption).foregroundStyle(.secondary) }
+                Text("So sánh \(period.rawValue.lowercased()) \(periodValue(for: priority.currentRange.start)) với \(period.rawValue.lowercased()) \(periodValue(for: priority.previousRange.start)).\(range.contains(now) ? " Cùng phần thời gian đã trôi qua." : "")").font(.caption).foregroundStyle(.secondary)
+                Text("Kỳ này: \(durationText(priority.currentSeconds)) · Kỳ trước: \(durationText(priority.previousSeconds))").font(.caption).foregroundStyle(.secondary)
+                Text("Trung bình/ngày: \(durationText(priority.currentSeconds / dayCount(priority.currentRange))) và \(durationText(priority.previousSeconds / dayCount(priority.previousRange))).").font(.caption).foregroundStyle(.secondary)
             }
-            if previous.total == 0 { Text("Không đủ cơ sở tính %.").font(.caption).foregroundStyle(.secondary) }
-            Text("So sánh \(period.rawValue.lowercased()) \(periodValue(for: ranges.0.start)) với \(period.rawValue.lowercased()) \(periodValue(for: ranges.1.start)).\(range.contains(Date()) ? " Cùng phần thời gian đã trôi qua." : "")").font(.caption).foregroundStyle(.secondary)
-            Text("Trung bình/ngày: \(durationText(current.total / dayCount(ranges.0))) và \(durationText(previous.total / dayCount(ranges.1))).").font(.caption).foregroundStyle(.secondary)
+        }
+    }
+    private var dailyPriorityContent: some View {
+        let priority = Reports.dailyPriorityTotals(model.journal, date: selectedDate)
+        return Card(title: "Tổng thời gian ưu tiên") {
+            if priority.activityIDs.isEmpty {
+                HStack {
+                    Text("Chưa chọn hoạt động ưu tiên").font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Chọn trong Cài đặt") { WindowManager.shared.showSettings(tab: 1) }
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Hôm nay").font(.callout).foregroundStyle(.secondary)
+                    Label {
+                        Text("\(priority.currentSeconds / 3600, format: .number.precision(.fractionLength(2))) giờ")
+                    } icon: { Image(systemName: "star.fill").foregroundStyle(.orange) }
+                    .font(.system(size: 28, weight: .bold, design: .rounded)).monospacedDigit()
+                    Text("\(durationText(priority.currentSeconds)) · ≈ \(priority.currentSeconds / 86400, format: .percent.precision(.fractionLength(1))) của 24 giờ")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Divider()
+                HStack {
+                    Text("Hôm qua").font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("\(priority.previousSeconds / 3600, format: .number.precision(.fractionLength(2))) giờ").font(.headline).monospacedDigit()
+                        Text("\(durationText(priority.previousSeconds)) · ≈ \(priority.previousSeconds / 86400, format: .percent.precision(.fractionLength(1))) của 24 giờ")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                Divider()
+                HStack {
+                    Image(systemName: priority.deltaSeconds > 0 ? "arrow.up.right" : (priority.deltaSeconds < 0 ? "arrow.down.right" : "equal"))
+                    if priority.deltaSeconds == 0 {
+                        Text("Bằng hôm qua")
+                    } else {
+                        Text("\(priority.deltaSeconds > 0 ? "Nhiều hơn" : "Ít hơn") hôm qua \(durationText(abs(priority.deltaSeconds)))")
+                        if let change = priority.changeFraction { Text(String(format: "(%+.1f%%)", change * 100)) }
+                    }
+                }.font(.callout.bold())
+                    .foregroundStyle(priority.deltaSeconds > 0 ? Color.green : (priority.deltaSeconds < 0 ? Color.orange : Color.secondary))
+            }
         }
     }
     private var heatmap: some View {
@@ -383,8 +487,13 @@ struct DashboardView: View {
         return Card(title: "Nhịp hoạt động trong tháng") {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
                 ForEach(["T2","T3","T4","T5","T6","T7","CN"], id: \.self) { Text($0).font(.caption).foregroundStyle(.secondary) }
-                ForEach(0..<offset, id: \.self) { _ in Color.clear.frame(height: 45) }
-                ForEach(0..<days, id: \.self) { day in
+                // One sequence gives every grid cell a unique identity. Separate
+                // 0-based spacer/day loops caused the first dates to disappear.
+                ForEach(0..<(offset + days), id: \.self) { cell in
+                    if cell < offset {
+                        Color.clear.frame(height: 48).accessibilityHidden(true)
+                    } else {
+                    let day = cell - offset
                     let start = calendar.date(byAdding: .day, value: day, to: range.start)!
                     let end = calendar.date(byAdding: .day, value: 1, to: start)!
                     let r = Reports.summarize(model.journal, range: DateInterval(start: start, end: end))
@@ -397,6 +506,8 @@ struct DashboardView: View {
                         }.frame(maxWidth: .infinity).frame(height: 48)
                             .background(hasData ? Color.indigo.opacity(min(0.85, 0.1 + seconds / 36000)) : Color.primary.opacity(0.03), in: RoundedRectangle(cornerRadius: 8))
                     }.buttonStyle(.plain).help(hasData ? durationText(seconds) : "Chưa có hoạt động")
+                        .accessibilityLabel("Ngày \(day + 1), \(model.dateLabel(start, format: "MM/yyyy"))")
+                    }
                 }
             }
         }

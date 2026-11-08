@@ -7,7 +7,91 @@ public struct GoalProgress {
     public var fraction: Double { targetSeconds > 0 ? min(1, max(0, seconds / targetSeconds)) : 0 }
 }
 
+public struct GoalCompletionCount {
+    public var completed = 0
+    public var total = 0
+    public var rate: Double? { total > 0 ? Double(completed) / Double(total) : nil }
+}
+
+public struct GoalCompletionSummary {
+    public var daily = GoalCompletionCount()
+    public var weekly = GoalCompletionCount()
+}
+
 public enum GoalReports {
+    /// Count recurring goal occurrences, rather than just distinct goal definitions.
+    /// Uses the goals still present in the journal and their saved weekly versions.
+    public static func completionSummary(_ j: Journal, now: Date = Date()) -> GoalCompletionSummary {
+        var result = GoalCompletionSummary()
+        let calendar = j.preferences.calendar
+        let entries = j.entries.filter { $0.start < now }.sorted { $0.start < $1.start }
+        for daily in [true, false] {
+            let goals = j.goals.filter { $0.isDaily == daily && $0.direction != "observe" }
+            guard let first = goals.map(\.effectiveFrom).min(), first <= now else { continue }
+            let component: Calendar.Component = daily ? .day : .weekOfYear
+            var start = calendar.dateInterval(of: component, for: first)!.start
+            var index = 0
+            while start <= now {
+                let range = calendar.dateInterval(of: component, for: start)!
+                while index < entries.count && entries[index].end <= start { index += 1 }
+                var seconds: [UUID: Double] = [:]
+                var scan = index
+                while scan < entries.count && entries[scan].start < min(range.end, now) {
+                    let entry = entries[scan]
+                    seconds[entry.activityID, default: 0] += overlap(entry.start, entry.end, start, min(range.end, now))
+                    scan += 1
+                }
+                let applicable = daily ? dailyGoals(j, at: start) : weeklyGoals(j, at: start)
+                for goal in applicable where goal.direction != "observe" {
+                    let complete = isComplete(goal, seconds: seconds[goal.activityID, default: 0], range: range, now: now)
+                    if daily { result.daily.total += 1; if complete { result.daily.completed += 1 } }
+                    else { result.weekly.total += 1; if complete { result.weekly.completed += 1 } }
+                }
+                start = range.end
+            }
+        }
+        if SleepPlan.isEnabled(j) {
+            // Older journals have no activation date. Start at the first sleep-goal
+            // evidence, never at unrelated historical work entries. With no evidence,
+            // only today's four tasks are known to exist.
+            let keys = (j.sleepHistory?.sessions.map(\.goalDay) ?? []) + (j.sleepReminders?.completions.map(\.day) ?? [])
+            let first = j.sleepReminders?.statisticsStartDay.flatMap { SleepTracking.date($0, calendar: calendar) }
+                ?? keys.compactMap { SleepTracking.date($0, calendar: calendar) }.min() ?? now
+            let firstDay = calendar.startOfDay(for: first), today = calendar.startOfDay(for: now)
+            let days = max(0, (calendar.dateComponents([.day], from: firstDay, to: today).day ?? 0) + 1)
+            result.daily.total += days * SleepReminder.allCases.count
+            // Index each actual marker once. Actual late markers override legacy
+            // checkmarks, just as SleepPlan.isComplete does on the daily page.
+            var actual: [String: Bool] = [:]
+            for session in j.sleepHistory?.sessions ?? [] {
+                let bed = session.goalDay + ":" + session.kind.bedtime.rawValue
+                actual[bed] = actual[bed, default: false] || session.isOnTime(session.kind.bedtime)
+                if session.end != nil {
+                    let wake = session.wakeGoalDay + ":" + session.kind.wake.rawValue
+                    actual[wake] = actual[wake, default: false] || session.isOnTime(session.kind.wake)
+                }
+            }
+            for completion in j.sleepReminders?.completions ?? [] {
+                let key = completion.day + ":" + completion.reminder.rawValue
+                if actual[key] == nil { actual[key] = true }
+            }
+            let firstKey = SleepPlan.dayKey(firstDay, calendar: calendar), lastKey = SleepPlan.dayKey(today, calendar: calendar)
+            result.daily.completed += actual.filter { key, complete in
+                let day = String(key.prefix(10))
+                return complete && day >= firstKey && day <= lastKey
+            }.count
+        }
+        return result
+    }
+    private static func isComplete(_ goal: Goal, seconds: Double, range: DateInterval, now: Date) -> Bool {
+        let active = now >= range.start && goal.effectiveFrom < range.end
+        let target = Double(goal.minutes) * 60
+        switch goal.direction {
+        case "increase": return active && target > 0 && seconds >= target
+        case "limit": return active && now >= range.end && seconds <= target
+        default: return false
+        }
+    }
     public static func dailyGoals(_ j: Journal, at date: Date) -> [Goal] {
         let end = j.preferences.calendar.dateInterval(of: .day, for: date)!.end
         return j.goals.filter { $0.isDaily && $0.effectiveFrom < end }
@@ -44,13 +128,7 @@ public enum GoalReports {
             $0 + overlap($1.start, $1.end, range.start, range.end)
         }
         let target = Double(goal.minutes) * 60
-        let active = now >= range.start && goal.effectiveFrom < range.end
-        let complete: Bool
-        switch goal.direction {
-        case "increase": complete = active && target > 0 && seconds >= target
-        case "limit": complete = active && now >= range.end && seconds <= target
-        default: complete = false
-        }
+        let complete = isComplete(goal, seconds: seconds, range: range, now: now)
         return GoalProgress(seconds: seconds, targetSeconds: target, isComplete: complete)
     }
     public static func saveDailyGoal(_ j: inout Journal, activityID: UUID, minutes: Int, at date: Date) throws {

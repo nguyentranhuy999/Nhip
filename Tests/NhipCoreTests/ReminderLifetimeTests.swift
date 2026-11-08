@@ -15,6 +15,29 @@ final class ReminderLifetimeTests {
         XCTAssertEqual(expirations, [60]); XCTAssertFalse(reminder.isActive)
         XCTAssertNil(reminder.nextDelay(at: base.addingTimeInterval(80), uptime: 1080))
     }
+    func testSleepSoundsEveryThreeSecondsAndStopsAtSixty() {
+        var reminder = ReminderLifetime(at: base, uptime: 1000, soundInterval: 3)
+        var sounds: [Int] = [], expirations: [Int] = []
+        for second in 0...70 {
+            let result = reminder.step(at: base.addingTimeInterval(Double(second)), uptime: 1000 + Double(second))
+            if result.sound { sounds.append(second) }
+            if result.expired { expirations.append(second) }
+        }
+        XCTAssertEqual(sounds, Array(stride(from: 0, to: 60, by: 3)))
+        XCTAssertEqual(expirations, [60])
+    }
+    func testSleepDismissalStopsThreeSecondCadenceAndNoCatchupBurst() {
+        var reminder = ReminderLifetime(at: base, uptime: 1000, soundInterval: 3)
+        XCTAssertTrue(reminder.step(at: base, uptime: 1000).sound)
+        XCTAssertTrue(reminder.step(at: base.addingTimeInterval(10), uptime: 1010).sound)
+        XCTAssertFalse(reminder.step(at: base.addingTimeInterval(10.1), uptime: 1010.1).sound)
+        XCTAssertEqual(reminder.nextDelay(at: base.addingTimeInterval(10), uptime: 1010)!, 2, accuracy: 0.001)
+        reminder.cancel()
+        for second in [12, 15, 30, 60] {
+            let result = reminder.step(at: base.addingTimeInterval(Double(second)), uptime: 1000 + Double(second))
+            XCTAssertFalse(result.sound); XCTAssertFalse(result.expired)
+        }
+    }
     func testClosingOrAnsweringStopsAllFutureSounds() {
         var reminder = ReminderLifetime(at: base, uptime: 1000)
         XCTAssertTrue(reminder.step(at: base, uptime: 1000).sound)

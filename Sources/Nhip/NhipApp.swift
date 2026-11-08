@@ -14,7 +14,7 @@ import NhipCore
                 Divider()
                 Button("Tổng kết tất cả thời gian") { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true; WindowManager.shared.showDashboard() }
                 Button("Mục tiêu") { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true; WindowManager.shared.showDashboard() }
-                Button("Hoạt động cá nhân") { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true; WindowManager.shared.showDashboard() }
+                Button("Hoạt động hàng ngày") { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true; WindowManager.shared.showDashboard() }
                 Button("Dashboard") { WindowManager.shared.showDashboard() }.keyboardShortcut("d")
                 Divider()
                 Button("Bắt đầu / Tiếp tục") { model.start() }
@@ -45,9 +45,10 @@ import NhipCore
     func showQuick(automatic: Bool = false) {
         if !automatic { AppModel.shared.previewInterval = nil }
         if quick == nil {
-            let panel = ReminderPanel(contentRect: NSRect(x: 0, y: 0, width: 440, height: 570), styleMask: [.titled, .closable, .nonactivatingPanel], backing: .buffered, defer: false)
+            let panel = ReminderPanel(contentRect: NSRect(x: 0, y: 0, width: 400, height: 350), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             panel.title = "Nhịp · Ghi nhận nhanh"
             panel.isReleasedWhenClosed = false; panel.hidesOnDeactivate = false
+            panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = NSHostingView(rootView: QuickCheckInView(model: .shared).environment(\.locale, Locale(identifier: "vi_VN")))
@@ -58,11 +59,18 @@ import NhipCore
             let mouse = NSEvent.mouseLocation
             if let screen = NSScreen.screens.first(where: { NSMouseInRect(mouse, $0.frame, false) }) ?? NSScreen.main {
                 let frame = screen.visibleFrame
-                quick!.setFrameTopLeftPoint(NSPoint(x: max(frame.minX, frame.maxX - 460), y: frame.maxY - 18))
+                quick!.setFrameTopLeftPoint(NSPoint(x: max(frame.minX, frame.maxX - 420), y: frame.maxY - 18))
             }
         }
         if automatic { quick!.orderFrontRegardless() }
         else { reveal(quick!) }
+    }
+    func resizeQuick(height: CGFloat) {
+        guard let quick, height.isFinite, height > 0 else { return }
+        let height = ceil(height)
+        guard abs(quick.frame.height - height) > 0.5 else { return }
+        let frame = NSRect(x: quick.frame.maxX - 400, y: quick.frame.maxY - height, width: 400, height: height)
+        quick.setFrame(frame, display: true, animate: quick.isVisible)
     }
     func windowWillClose(_ notification: Notification) {
         if let window = notification.object as? NSWindow, window === quick {
@@ -74,11 +82,10 @@ import NhipCore
     }
     func showSleep() {
         if sleep == nil {
-            let panel = ReminderPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 130), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+            let panel = ReminderPanel(contentRect: NSRect(x: 0, y: 0, width: 420, height: 164), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
             panel.title = "Nhịp · Ngủ & thức dậy"
             panel.isReleasedWhenClosed = false; panel.hidesOnDeactivate = false
             panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = true
-            panel.ignoresMouseEvents = true
             panel.level = .floating
             panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
             panel.contentView = NSHostingView(rootView: SleepReminderView(model: .shared).environment(\.locale, Locale(identifier: "vi_VN")))
@@ -93,7 +100,8 @@ import NhipCore
         }
         sleep!.orderFrontRegardless()
     }
-    func showSettings() {
+    func showSettings(tab: Int? = nil) {
+        if let tab { AppModel.shared.settingsTab = tab }
         if settings == nil { settings = makeWindow(title: "Cài đặt Nhịp", size: NSSize(width: 780, height: 720), view: PreferencesView(model: .shared), resizable: true) }
         reveal(settings!)
     }

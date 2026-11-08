@@ -7,9 +7,13 @@ public struct Activity: Codable, Identifiable, Equatable {
     public var symbol: String
     public var archived: Bool
     public var personalKind: PersonalActivityKind?
-    public init(id: UUID = UUID(), name: String, color: String, symbol: String = "circle.fill", archived: Bool = false, personalKind: PersonalActivityKind? = nil) {
+    public var recordingMode: ActivityRecordingMode?
+    public var isPriority: Bool? // Missing in older journals means unselected.
+    public init(id: UUID = UUID(), name: String, color: String, symbol: String = "circle.fill", archived: Bool = false, personalKind: PersonalActivityKind? = nil, recordingMode: ActivityRecordingMode? = nil, isPriority: Bool? = nil) {
         self.id = id; self.name = name; self.color = color; self.symbol = symbol; self.archived = archived
         self.personalKind = personalKind
+        self.recordingMode = recordingMode
+        self.isPriority = isPriority
     }
     public static var defaults: [Activity] { [
         Activity(name: "Học", color: "6366F1", symbol: "book.fill"),
@@ -71,6 +75,7 @@ public struct ScheduleWindow: Codable, Identifiable, Equatable {
 }
 
 public struct Preferences: Codable, Equatable {
+    public var userName: String? // Missing in older journals: use the macOS account name.
     public var intervalMinutes = 5
     public var timezone = "Asia/Ho_Chi_Minh"
     public var sound = false
@@ -125,6 +130,10 @@ public struct Journal: Codable, Equatable {
     public var preferences = Preferences()
     public var runtime = Runtime()
     public init() {}
+    public mutating func reset(at now: Date = Date()) {
+        self = Journal()
+        SleepPlan.prepareStatistics(journal: &self, on: now)
+    }
     public func activity(_ id: UUID) -> Activity? { activities.first { $0.id == id } }
     public var isRecordingPersonalActivity: Bool { sleepHistory?.active != nil || personalHistory?.active != nil }
 }

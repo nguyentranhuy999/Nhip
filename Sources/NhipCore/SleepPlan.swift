@@ -31,10 +31,24 @@ public struct SleepCompletion: Codable, Equatable {
 public struct SleepReminderState: Codable, Equatable {
     public var enabled = true
     public var completions: [SleepCompletion] = []
+    public var statisticsStartDay: String?
     public init() {}
 }
 
 public enum SleepPlan {
+    /// Persist the first known day so unrecorded days are still counted tomorrow.
+    public static func prepareStatistics(journal: inout Journal, on now: Date = Date()) {
+        guard isEnabled(journal) else { return }
+        // An established baseline (especially after reset) is authoritative.
+        // A night begun after midnight may belong to yesterday's sleep goal,
+        // but must never move the statistics baseline back to yesterday.
+        guard journal.sleepReminders?.statisticsStartDay == nil else { return }
+        let calendar = journal.preferences.calendar
+        let keys = (journal.sleepHistory?.sessions.map(\.goalDay) ?? []) + (journal.sleepReminders?.completions.map(\.day) ?? [])
+        let first = keys.compactMap { SleepTracking.date($0, calendar: calendar) }.min() ?? now
+        if journal.sleepReminders == nil { journal.sleepReminders = SleepReminderState() }
+        journal.sleepReminders?.statisticsStartDay = dayKey(min(first, now), calendar: calendar)
+    }
     public static func nextReminder(after date: Date, calendar: Calendar) -> (reminder: SleepReminder, date: Date)? {
         SleepReminder.allCases.compactMap { reminder in
             calendar.nextDate(after: date, matching: reminder.dateComponents(calendar: calendar), matchingPolicy: .nextTime)
@@ -69,6 +83,11 @@ public enum SleepPlan {
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian); formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.dateFormat = "yyyy-MM-dd"; formatter.isLenient = false
+        if let day = state.statisticsStartDay {
+            guard let date = formatter.date(from: day), formatter.string(from: date) == day else {
+                throw JournalError.invalid("Ngày bắt đầu thống kê nhiệm vụ ngủ không hợp lệ.")
+            }
+        }
         for completion in state.completions {
             guard let date = formatter.date(from: completion.day), formatter.string(from: date) == completion.day,
                   keys.insert(completion.day + "/" + completion.reminder.rawValue).inserted else {

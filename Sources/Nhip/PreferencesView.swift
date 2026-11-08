@@ -3,7 +3,7 @@ import NhipCore
 
 struct PreferencesView: View {
     @ObservedObject var model: AppModel
-    @State private var tab = 0
+    @State private var userName = ""
     @State private var preferences = Preferences()
     @State private var newName = ""
     @State private var categoryEditor: Activity?
@@ -13,22 +13,38 @@ struct PreferencesView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Cài đặt Nhịp").font(.title.bold())
-            Picker("Nhóm cài đặt", selection: $tab) {
-                Text("Nhắc & lịch").tag(0); Text("Hoạt động").tag(1); Text("Dữ liệu").tag(2)
+            Picker("Nhóm cài đặt", selection: $model.settingsTab) {
+                Text("Cá nhân").tag(3); Text("Nhắc & lịch").tag(0); Text("Hoạt động").tag(1); Text("Dữ liệu").tag(2)
             }.pickerStyle(.segmented)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    switch tab {
+                    switch model.settingsTab {
                     case 0: reminderSettings
                     case 1: categories
+                    case 3: profileSettings
                     default: dataSettings
                     }
                 }.padding(2)
             }
         }.padding(24)
-            .onAppear { preferences = model.journal.preferences; timezone = preferences.timezone; model.refreshAuthorization() }
+            .onAppear { preferences = model.journal.preferences; timezone = preferences.timezone; userName = model.userName; model.refreshAuthorization() }
             .sheet(item: $categoryEditor) { activity in CategoryEditor(model: model, activity: activity) }
             .modifier(FeedbackModifier(model: model))
+    }
+    private var profileSettings: some View {
+        Card(title: "Thông tin cá nhân") {
+            TextField("Tên người dùng", text: $userName).textFieldStyle(.roundedBorder)
+                .accessibilityLabel("Tên người dùng")
+                .onSubmit { saveUserName() }
+            Button("Lưu tên") { saveUserName() }.buttonStyle(.borderedProminent).tint(.indigo)
+        }
+    }
+    private func saveUserName() {
+        let name = userName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if model.perform({ $0.preferences.userName = name.isEmpty ? nil : name }) {
+            userName = model.userName
+            preferences.userName = model.journal.preferences.userName
+        }
     }
     private var reminderSettings: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -104,13 +120,33 @@ struct PreferencesView: View {
                     Text(activity.name)
                     if activity.archived { Text("Đã lưu trữ").font(.caption).foregroundStyle(.secondary) }
                     Spacer()
+                    Button {
+                        model.perform { journal in
+                            if let index = journal.activities.firstIndex(where: { $0.id == activity.id }) {
+                                journal.activities[index].isPriority = journal.activities[index].isPriority != true
+                            }
+                        }
+                    } label: {
+                        Image(systemName: activity.isPriority == true ? "star.fill" : "star")
+                            .foregroundStyle(activity.isPriority == true ? Color.orange : Color.secondary)
+                            .frame(width: 24, height: 24)
+                    }.buttonStyle(.plain).accessibilityLabel("Ưu tiên \(activity.name)")
+                        .accessibilityValue(activity.isPriority == true ? "Đã chọn" : "Chưa chọn")
+                        .help(activity.isPriority == true ? "Bỏ ưu tiên \(activity.name)" : "Ưu tiên \(activity.name)")
+                    if PersonalTracking.isRest(activity, journal: model.journal) {
+                        Text("Ghi nhận giấc ngủ").font(.caption).foregroundStyle(.secondary).frame(width: 145)
+                    } else {
+                        Picker("Cách ghi nhận \(activity.name)", selection: Binding(
+                            get: { PersonalTracking.recordingMode(of: model.journal.activity(activity.id) ?? activity) },
+                            set: { model.setRecordingMode($0, activityID: activity.id) }
+                        )) {
+                            ForEach(ActivityRecordingMode.allCases) { mode in Text(mode.title).tag(mode) }
+                        }.labelsHidden().frame(width: 145).accessibilityLabel("Cách ghi nhận \(activity.name)")
+                    }
                     Button { moveCategory(index, -1) } label: { Image(systemName: "arrow.up") }.disabled(index == 0).help("Đưa lên")
                     Button { moveCategory(index, 1) } label: { Image(systemName: "arrow.down") }.disabled(index == model.journal.activities.count - 1).help("Đưa xuống")
                     Button("Sửa") { categoryEditor = activity }
                     Button(activity.archived ? "Khôi phục" : "Lưu trữ") {
-                        if !activity.archived && model.quickActivities.contains(where: { $0.id == activity.id }) && model.quickActivities.count <= 1 {
-                            model.error = "Cần giữ ít nhất một hoạt động cho bảng ghi nhận mỗi chu kỳ."; return
-                        }
                         if !activity.archived && model.activeActivities.count <= 1 { model.error = "Cần giữ ít nhất một hoạt động để ghi nhận."; return }
                         model.perform { $0.activities[index].archived.toggle() }
                     }
@@ -134,6 +170,7 @@ struct PreferencesView: View {
                 Button("Mở thư mục dữ liệu") { NSWorkspace.shared.open(model.dataDirectory) }
                 Button("Sao lưu JSON…") { model.backup() }
                 Button("Khôi phục JSON…") { model.restore() }
+                Button("Xuất CSV…") { model.exportCSV(range: Reports.allTimeRange(model.journal)) }
             }
             Divider()
             Button("Hoàn tác lần chỉnh sửa gần nhất") { model.undo() }
@@ -163,6 +200,7 @@ struct CategoryEditor: View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Sửa hoạt động").font(.title2.bold())
             TextField("Tên", text: $activity.name).textFieldStyle(.roundedBorder)
+            Toggle("Hoạt động ưu tiên", isOn: Binding(get: { activity.isPriority == true }, set: { activity.isPriority = $0 }))
             HStack { ForEach(colors, id: \.self) { color in Button { activity.color = color } label: { Circle().fill(Color(hex: color)).frame(width: 28, height: 28).overlay(Circle().stroke(activity.color == color ? Color.primary : .clear, lineWidth: 2).padding(-3)) }.buttonStyle(.plain).accessibilityLabel("Màu \(color)") } }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6)) { ForEach(symbols, id: \.self) { symbol in Button { activity.symbol = symbol } label: { Image(systemName: symbol).frame(width: 38, height: 34).background(activity.symbol == symbol ? .indigo.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 7)) } } }
             HStack { Spacer(); Button("Hủy") { dismiss() }; Button("Lưu") {

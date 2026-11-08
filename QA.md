@@ -1,4 +1,125 @@
-# Kiểm tra bản 1.0–1.9.0
+# Kiểm tra bản 1.0–1.12.4
+
+
+## Cập nhật 1.12.4 — một phần so sánh dựa trên giờ ưu tiên
+
+- Thay phép so sánh thường bằng Reports.priorityComparison ở phần bố cục cũ; bỏ khối ưu tiên riêng và helper hai cột lớn. Một phần giữ tăng/giảm/bằng, %, kỳ so sánh/cùng phần thời gian đã trôi qua, tổng hai kỳ và trung bình/ngày từ giờ ưu tiên. Danh sách sao rỗng không tự chuyển sang cộng tất cả; kỳ trước 0 không tính %.
+- **133/133 kiểm tra đạt**. Release **1.12.4 (35)** build/chữ ký đạt; cài cả hai bản Applications. Nguồn dữ liệu không đổi, sử dụng cùng helper ưu tiên đã có kiểm tra đầy đủ.
+- UI fixture `.smoke-priority-merged-v1124`, bundle riêng `vn.local.nhip.demo.prioritymerged`: tuần 44/2026 ưu tiên 29 giờ, tuần 43 28 giờ → tăng 1 giờ (+3,6%), trung bình 4 giờ 8 phút / 4 giờ. Tổng tất cả ở tuần 44 là 32 giờ do 3 giờ Nghỉ ngơi không ưu tiên; số so sánh loại đúng 3 giờ này. Ảnh xác nhận chỉ một khối gọn theo bố cục phía trên.
+- Đổi bộ lọc biểu đồ sang Giải trí: so sánh tuần giữ 29/28 giờ. Trang tháng 10 vẫn tính ưu tiên 126/105 giờ, tăng 21 giờ (+20%), trung bình 4 giờ 3 phút / 3 giờ 30 phút. Trang năm có đúng một phần, kỳ trước 0 hiện Không đủ cơ sở tính %, trung bình/ngày vẫn hiển thị.
+- Dữ liệu fixture không đổi khi điều hướng/lọc. Bản thật mở lại hiển thị một khối tuần: tăng 45 phút ưu tiên, kỳ trước 0, trung bình/ngày 6 phút / 0 phút. Entry cũ, mục tiêu, nhóm sao, cài đặt và lịch sử giữ nguyên.
+
+## Cập nhật 1.12.3 — rút gọn nhãn ô ưu tiên ngày
+
+- Đổi Card ngày thành Tổng thời gian ưu tiên; bỏ dòng tên các mục ưu tiên, dùng Hôm nay/Hôm qua thay các nhãn ngày cụ thể và dùng “hôm qua” trong dòng so sánh. Giữ bộ chọn ngày, cách tính, tỷ lệ 24h và so sánh tuần/tháng/năm.
+- Release **1.12.3 (34)** build/chữ ký đạt; cập nhật cả hai bản Applications. AX bản cài thật xác nhận Tổng thời gian ưu tiên → Hôm nay 0,58 giờ, 35 phút ≈ 2,4% → Hôm qua 0 giờ, 0,0% → Nhiều hơn hôm qua 35 phút; không còn danh sách tên trong Card.
+- Dữ liệu/cài đặt giữ nguyên. Chỉ sửa nhãn SwiftUI; không thêm hoặc chạy lại Core tests.
+
+## Cập nhật 1.12.2 — vị trí, tỷ lệ 24h và chênh lệch ưu tiên ngày
+
+- Chuyển Card ưu tiên vào dayContent ngay sau Dòng thời gian, trước Thời gian theo hoạt động. Mỗi tổng có thời lượng và ≈ % của 24 giờ (mẫu số cố định 86.400 giây). Thêm Nhiều hơn/Ít hơn/Bằng ngày trước; % thay đổi chỉ khi ngày trước > 0.
+- Build release **1.12.2 (33)** và kiểm tra chữ ký đạt; cài cả hai bản Applications. Thay đổi giới hạn SwiftUI, sử dụng các tổng/delta đã kiểm tra ở Core; không thêm hoặc chạy lại Core tests.
+- UI fixture riêng `.smoke-day-share-v1122`, bundle ID `vn.local.nhip.demo.dayshare`: 08/11 = 0 giờ (0,0%) so 07/11 = 4 giờ (16,7%), ít hơn 4 giờ (-100%); 07/11 = 4 giờ (16,7%) so 06/11 = 3 giờ (12,5%), nhiều hơn 1 giờ (+33,3%); 06/11 so 05/11 cùng 3 giờ, hiển thị Bằng ngày trước. Ảnh xác nhận Card nằm dưới Dòng thời gian.
+- Bản thật sau cập nhật: 35 phút ≈ 2,4% của 24 giờ, ngày trước 0 phút ≈ 0,0%, Nhiều hơn ngày trước 35 phút và không hiện % tăng khi mẫu số bằng 0. Các lựa chọn sao, bản ghi, mục tiêu và cài đặt được giữ nguyên.
+
+## Cập nhật 1.12.1 — ưu tiên của ngày đang xem và ngày trước
+
+- Trang Ngày thêm Card Thời gian ưu tiên giữa metrics và timeline. Số chính của ngày đang xem, dòng dưới là toàn bộ ngày liền trước kèm ngày cụ thể. Cùng nhóm sao, độc lập bộ lọc hoạt động, cộng mọi nguồn Entry. Không đổi cách so sánh cùng thời gian đã trôi qua của tuần/tháng/năm.
+- **133/133 kiểm tra đạt**: thêm ba trường hợp toàn ngày trước (gồm giờ sau giờ đang xem), cắt nửa đêm và DST 25 giờ, đổi ngày qua biên tháng và danh sách ưu tiên rỗng. Phần quét Entry ưu tiên được dùng chung cho hai loại báo cáo.
+- Build release **1.12.1 (32)** và kiểm tra chữ ký đạt, cập nhật cả hai bản Applications. Nhật ký thật mở lại bình thường; card ưu tiên hiện trạng thái Chưa chọn hoạt động ưu tiên do chưa có sao trong bản chính. Mọi Entry cũ và mục tiêu/cài đặt/lịch sử giữ nguyên; các cờ ưu tiên người dùng chọn khi đang kiểm tra được giữ, không ghi đè lại.
+- UI fixture riêng `.smoke-daily-priority-v1121`, dùng bundle demo có ID riêng `vn.local.nhip.demo.dailypriority` để tránh lẫn cửa sổ với app chính. Ngày 08/11 thấy 0 giờ / ngày trước 07/11 4 giờ; bấm ngày trước thành 07/11 thấy 4 giờ / ngày trước 06/11 3 giờ. Ảnh xác nhận tên hoạt động, tổng chính và dòng ngày trước nằm đúng dưới, trước timeline. Dữ liệu fixture không thay đổi khi điều hướng.
+
+## Cập nhật 1.12.0 — giờ của nhóm hoạt động ưu tiên
+
+- Thêm Activity.isPriority tùy chọn, sao bật/tắt lưu ngay trong Cài đặt → Hoạt động, tùy chọn tương đương trong Sửa hoạt động. Không tự chọn cho nhật ký cũ. Thêm nhóm Thời gian ưu tiên ở so sánh tuần/tháng/năm, giữ so sánh thường; giờ ưu tiên dùng nhóm sao độc lập bộ lọc biểu đồ.
+- **130/130 kiểm tra đạt**, gồm 8 kiểm tra mới: chọn rỗng/mẫu số 0, nhiều danh mục và nguồn checkin/manual/personal-timer/sleep, cùng phần tuần đã trôi qua, biên tháng/năm, đổi tên/lưu trữ theo ID, JSON/SQLite/legacy và sai kiểu dữ liệu, reset và không sửa lịch sử. Bộ kiểm tra dữ liệu một năm vẫn đạt.
+- Build release **1.12.0 (31)** và chữ ký đạt, cập nhật cả hai bản Applications. Mở lại bản thật thấy nhóm Thời gian ưu tiên và trạng thái Chưa chọn hoạt động ưu tiên; lựa chọn do người dùng tự đặt, không gán trước.
+- UI fixture riêng `.smoke-priority-v112`: từ tuần chưa chọn ưu tiên, bấm Chọn trong Cài đặt mở đúng tab Hoạt động. Bấm sao Học/Nghiên cứu đổi star → star.fill và Value Đã chọn. SQLite giữ hai cờ true; entries/goals/preferences/lịch sử cũ của fixture không đổi, Activity chỉ khác isPriority.
+- Ảnh UI trang tháng bằng fixture: nhóm ưu tiên ghi rõ Học, Nghiên cứu; kỳ này 22 giờ, kỳ trước khoảng 29,66 giờ ở thời điểm kiểm tra, giảm khoảng 7 giờ 39 phút (-25,8%). Tổng thường kỳ này gồm thêm 2 giờ Nghỉ ngơi là 24 giờ, cho thấy nhóm ưu tiên loại đúng mục không được đánh dấu. Giờ kỳ trước thay đổi theo phần thời gian đã trôi qua nên đây là số tại lúc kiểm tra.
+- Đối chiếu nhật ký thật sau cài: mọi Entry cũ còn nguyên; mục tiêu/danh mục/lịch sử/cài đặt giữ nguyên. Chưa đặt cờ ưu tiên trong bản chính trong quá trình kiểm tra.
+
+## Cập nhật 1.11.5 — bỏ nhãn Mỗi ngày trên nhiệm vụ
+
+- Bỏ Text Mỗi ngày trên dòng GoalProgressRow của mục tiêu ngày; giữ nhãn Mỗi tuần cho tuần, tên, thời lượng và tiến độ cũ.
+- Release **1.11.5 (30)** build/chữ ký đạt, cập nhật cả hai bản Applications. UI bản cài thật: các dòng Học và Nghiên cứu không còn Mỗi ngày; mục tiêu 2 giờ/1 giờ và tiến độ giữ đúng. Nhật ký, mục tiêu, cài đặt và lịch sử giữ nguyên.
+- Chỉ thay nhãn; không thêm hoặc chạy lại Core tests.
+
+## Cập nhật 1.11.4 — đủ ngày đầu tháng và tiêu đề nhiệm vụ tự tạo
+
+- Thay hai ForEach có cùng ID số nguyên cho ô trống/ngày bằng một ForEach cho toàn bộ ô lịch. Đầu tháng giữ đủ ngày 1–6, căn cột thứ đúng; thêm nhãn trợ năng ngày/tháng/năm. Trang Mục tiêu thêm Nhiệm vụ trong ngày ngay trước danh sách mục tiêu tự tạo, song song nhóm Ngủ & thức dậy.
+- Build release **1.11.4 (29)** và kiểm tra chữ ký đạt; đã cập nhật cả hai bản Applications và mở lại. Không đổi Core hoặc thêm/rerun kiểm tra Core cho sửa nhận diện ô SwiftUI/tiêu đề.
+- UI fixture riêng `.smoke-calendar-v1114`: AX đếm đủ 30 nút Ngày 1…30 của tháng 11/2026, ảnh thấy ngày 1 ở cột CN, các ngày 2…6 xuất hiện. Bấm ngày 1 mở Ngày với bộ chọn 1/11/26, timeline 01/11/2026. Trang Mục tiêu hiển thị Nhiệm vụ trong ngày ngay trên checkbox Học.
+- Dữ liệu/cài đặt fixture không thay đổi khi kiểm tra điều hướng. Nhật ký thật được giữ, mọi Entry cũ còn nguyên; không sửa dữ liệu thật để thử mục tiêu.
+
+## Cập nhật 1.11.3 — tiêu đề hoạt động bao gồm cả thẻ và bảng
+
+- Đưa sáu thẻ vào đầu nội dung Card Thời gian theo từng hoạt động: tiêu đề → sáu thẻ → tổng cộng → các dòng chi tiết. Nhiệm vụ đã hoàn thành vẫn ở trước phần này. Các trang Ngày/Tuần/Tháng/Năm giữ vị trí metrics cũ.
+- Build release **1.11.3 (28)**, kiểm tra chữ ký và cập nhật cả hai bản Applications đạt. Kiểm tra AX thấy tiêu đề trước collection sáu thẻ và bảng dòng ở sau; ảnh giao diện bản cài thật xác nhận tiêu đề và các thẻ nằm trong cùng khung, vừa chiều rộng tối thiểu.
+- Chỉ sửa bố cục SwiftUI; không thêm hoặc chạy lại Core tests cho thay đổi này.
+
+## Cập nhật 1.11.2 — đưa nhiệm vụ lên đầu Tổng kết
+
+- Chỉ chuyển goalCompletionContent lên ngay sau lời chào, trước metrics. Sáu thẻ tổng giờ và bảng chi tiết giữ nguyên thứ tự; không đổi cách tính/lưu dữ liệu hoặc trang khác.
+- Build release **1.11.2 (27)** và kiểm tra chữ ký đạt; cập nhật cả hai bản Applications. Không thêm hoặc chạy lại bộ kiểm tra Core cho thay đổi vị trí giao diện này.
+- Kiểm tra AX và ảnh trên bản cài thật: đầu trang là tiêu đề/lời chào, Nhiệm vụ đã hoàn thành (ngày/tuần), hai hàng ba thẻ tổng giờ, tiếp theo bảng Thời gian theo từng hoạt động. Bố cục vừa khung tối thiểu, nhãn không bị cắt.
+
+## Cập nhật 1.11.1 — reset không bị kéo lùi mốc bởi ngủ đêm
+
+- Nguyên nhân: prepareStatistics và completionSummary cùng lấy min(mốc đã lưu, goalDay). Ngủ đêm sau nửa đêm có goalDay tối trước nên kéo mốc về hôm qua, khiến tổng từ 4 thành 8. Mốc đã lưu nay là ranh giới cố định; chỉ dữ liệu legacy thiếu mốc mới suy từ lịch sử. Reset gọi Journal.reset(at:) để tạo nhật ký mới và mốc hôm nay trong cùng thao tác lưu.
+- **122/122 kiểm tra đạt**, gồm bốn hồi quy: reset xóa lượt cũ, bắt đầu ngủ sau 00:00, giữ mốc qua lưu/mở lại/thức dậy và ngày kế tiếp, marker legacy trước mốc không được cộng. Hiệu năng 105.120 Entry khoảng 0,045 giây.
+- UI fixture riêng `.smoke-reset-v1111`: Cài đặt → Dữ liệu → Xóa toàn bộ, xác nhận; Tổng kết trở thành ngày 0/4, tuần 0/0. Bấm Ngủ đêm sau nửa đêm, quay lại vẫn 0/4; SQLite giữ statisticsStartDay=2026-11-08 và goalDay phiên ngủ=2026-11-07.
+- Release **1.11.1 (26)** đã kiểm tra chữ ký và cài cả hai bản Applications. Sửa riêng mốc thống kê nhật ký thật từ 2026-11-07 thành 2026-11-08 theo ngày reset người dùng yêu cầu; có bản sao JSON before-statistics-fix trong thư mục dữ liệu trước khi sửa. Mở lại thấy 0/4 ngày, 0/0 tuần. Entries/goals/activities/lịch sử ngủ/phiên thủ công/preferences giữ nguyên, phiên ngủ đang chạy và runtime enabled được giữ; chỉ statisticsStartDay thay đổi.
+
+## Cập nhật 1.11.0 — tổng số nhiệm vụ đã hoàn thành
+
+- **118/118 kiểm tra đạt**: thêm 11 trường hợp lượt lặp ngày/tuần, mức tuần theo phiên bản, archived, DST/ngày Chủ nhật–thứ Hai, mẫu số 0, mục tiêu tương lai, mục tiêu ngủ thật/legacy/đúng giờ, giới hạn/chỉ quan sát, sửa/xóa và mốc bắt đầu thống kê ngủ. Trường mới tùy chọn giữ tương thích JSON cũ; ngày mốc không hợp lệ bị từ chối.
+- Hiệu năng tổng kết nhiệm vụ với 105.120 Entry trong một năm: **0,045 giây**; kiểm tra 365/366 lượt ngày và 53/53 lượt tuần. Tổng hợp báo cáo cũ khoảng 0,071 giây.
+- UI fixture riêng `.smoke-completions-v111`: hiển thị đúng ngày **5/10 — 50,0%**, tuần **1/1 — 100,0%**; hai ô ở cuối Tổng kết, thanh tiến độ tương ứng. Kiểm tra ảnh giao diện: bố cục vừa khung tối thiểu, không cắt nhãn. Không sửa entries/goals/activities/lịch sử ngủ/phiên thủ công/preferences của fixture.
+- Release **1.11.0 (25)** đã ký và kiểm tra chữ ký, cài cả `/Applications/Nhip.app` và `~/Applications/Nhip.app`. Mở lại bản thật: ngày **1/8 — 12,5%**, tuần **0/0 — —** khi chưa đặt mục tiêu tuần; phiên ngủ đêm đang mở được giữ. Các bản ghi, mục tiêu, danh mục, lịch sử ngủ/phiên thủ công và preferences giữ nguyên; khởi tạo trạng thái ngủ đang bật với completions rỗng tương đương mặc định cũ và bổ sung `statisticsStartDay` = 2026-11-07 từ bằng chứng ngủ hiện có. Runtime enabled giữ nguyên.
+
+## Cập nhật 1.10.1 — gọn dashboard và lời chào cá nhân
+
+- Bỏ Thêm hoạt động ở Tuần/Tháng/Năm/Tổng kết, giữ ở Ngày; bỏ mọi nút share trên dashboard. Xuất CSV toàn bộ lịch sử tại Cài đặt → Dữ liệu cùng sao lưu/khôi phục JSON.
+- Thêm Cài đặt → Cá nhân → Tên người dùng → Lưu tên. Tổng kết hiển thị Xin chào [tên]!, mặc định tên tài khoản macOS; trường optional tương thích nhật ký cũ.
+- **107/107 kiểm tra đạt**, build release 1.10.1 (24), kiểm tra chữ ký và cài cả hai bản Applications đạt.
+- UI fixture riêng `.smoke-profile-v1101`: kiểm tra đủ Ngày/Tuần/Tháng/Năm/Tổng kết; chỉ Ngày có nút thêm, không trang nào có nút share. Lưu tên “Huy thử nghiệm”, lời chào đổi ngay, SQLite giữ tên sau thoát; entries/goals/activities/lịch sử ngủ/phiên thủ công và các preferences khác không đổi. Cài đặt Dữ liệu có nút Xuất CSV.
+- Mở lại bản cài thật, xác minh trang tuần đã gỡ nút. Đối chiếu nhật ký thật: entries/goals/activities/lịch sử ngủ/phiên thủ công/lịch nhắc/preferences giữ nguyên; vẫn tạm dừng.
+
+## Cập nhật 1.10.0 — chọn cách ghi nhận từng hoạt động
+
+- **107/107 kiểm tra đạt**, gồm 12 trường hợp mới cho mặc định dữ liệu cũ, Nhắc/Tự ghi/Cả hai, hoạt động tùy chỉnh, đổi tên/lưu trữ, phiên đang chạy khi đổi mode, tất cả thủ công rồi bật nhắc lại, Nghỉ ngơi đặc biệt, cộng hai đường vào cùng mục tiêu, JSON/SQLite và lỗi nguyên tử. Dữ liệu một năm 105.120 khoảng tổng hợp khoảng 0,076 giây.
+- Build release 1.10.0 (23) và kiểm tra chữ ký đạt. Đã cập nhật cả `/Applications/Nhip.app` và `~/Applications/Nhip.app`, mở lại bản cài và thấy các bộ chọn mới trong Cài đặt → Hoạt động.
+- UI dùng dữ liệu riêng `.smoke-modes-v110`: chọn Học → Cả hai, thấy Học ở bảng nhắc và hàng Bắt đầu/Kết thúc; bắt đầu khóa các phiên khác, kết thúc mở bảng sửa ngày/giờ và lưu đúng một Entry `personal-timer` thuộc ID Học. Chuyển Học → Tự ghi nhận, preview nhắc không còn Học; Nghỉ ngơi không có bộ chọn mode. Sau thoát, SQLite giữ mode manual và phiên Học 26,16 giây đã kết thúc; bản ghi/mục tiêu/cài đặt cũ của fixture giữ nguyên.
+- Đối chiếu dữ liệu thật sau cập nhật: 13 Entry, 3 mục tiêu, lịch sử ngủ/phiên thủ công/cài đặt/lịch ngủ giữ nguyên; runtime vẫn tạm dừng. Trong lúc kiểm tra bản cài, người dùng đã chọn Học/Nghiên cứu → Cả hai và Khác → Tự ghi nhận; các thay đổi mode được lưu, không ghi đè lại.
+
+## Cập nhật 1.9.5 — âm ghi nhận hoạt động mỗi ba giây
+
+- Đổi cadence khi khởi chạy bảng ghi nhận sang 3 giây, đồng nhất với ngủ. Giữ chu kỳ hỏi hoạt động 5 phút, công tắc Phát âm báo, thời hạn 60 giây và dừng ngay khi trả lời/bỏ qua/đóng/tạm dừng.
+- **95/95 kiểm tra đạt**; build release/chữ ký đạt. Thử preview có bật âm bằng dữ liệu riêng `.smoke-quick-sound-v195`, đối chiếu log phát âm mỗi ba giây, các lượt kết thúc bằng cancel/expire và không có âm sau khi đóng. Checksum entries/goals/lịch sử ngủ/hoạt động và preferences của fixture không đổi; không ghi dữ liệu thử vào nhật ký thật.
+- Log thực tế của lượt ghi nhận: âm ở 0,001 / 3,001 / 6,000 / 9,001…27,001 giây, hủy ở 29,170 giây; không phát tiếp sau khi đóng. Đã cài cả hai bản Applications lên 1.9.5 (22), kiểm tra mở lại và đối chiếu dữ liệu/cài đặt cũ giữ nguyên.
+
+## Cập nhật 1.9.4 — tắt lời nhắc ngủ ngay, âm mỗi ba giây
+
+- Thêm nút Tắt lời nhắc với biểu tượng chuông tắt trên thẻ ngủ; bỏ click-through để bấm được. Nút dùng cùng hàm dismiss: dừng NSSound, hủy timer/callback cũ, đóng cửa sổ, giữ lịch các lượt sau và trạng thái mục tiêu/nhật ký. Cửa sổ ngủ cao 164 điểm. Preview nhận focus để thử nút, lời nhắc tự động vẫn không kích hoạt dashboard.
+- Nhắc ngủ dùng cadence riêng 3 giây, ghi nhận công việc giữ 10 giây; đều tối đa 60 giây. **95/95 kiểm tra đạt**, bổ sung 20 mốc âm 0/3/6…57, không phát ở giây 60, hủy sớm và timer trễ không nhắc dồn; các kiểm tra 10 giây cũ vẫn đạt. Tổng hợp một năm: 0,070 giây.
+- UI riêng `.smoke-sleep-alert-v194`: xem ảnh nút mới, bấm đóng quay về Cài đặt ngay, Bật nhắc nhở ngủ vẫn tích. Log `NSSound.play` tại 0,001 / 3,001 / 6,001 / 9,001 / 12,001 giây trong lượt đầu, hủy ở 13,788 giây. Có lượt preview mới được mở trong lúc kiểm tra; đối chiếu riêng từng lượt, đều kết thúc bằng cancel/expire, không có âm sau khi kết thúc thử. Checksum entries/goals/sleepHistory/personalHistory/sleepReminders của fixture giữ nguyên.
+- Build/chữ ký đạt, cập nhật cả hai bản Applications lên 1.9.4 (21) và mở lại bản chính. Đối chiếu checksum dữ liệu/cài đặt thật trước/sau khớp, không tạo bản ghi thử trên dữ liệu thật.
+
+## Cập nhật 1.9.3 — sáu thẻ Tổng kết
+
+- Trang Tổng kết có lưới ba cột/hai hàng: Học/Nghiên cứu/Làm việc, rồi Tập thể thao/Nghỉ ngơi/Giải trí. Làm việc tổng hợp danh mục Công việc/Làm việc, không sửa danh mục hoặc dữ liệu. Các kỳ Ngày/Tuần/Tháng/Năm giữ ba thẻ cũ.
+- Build/chữ ký đạt, cập nhật cả hai bản Applications lên 1.9.3 (20). Đã xem ảnh chụp màn hình thực tế: thẻ đúng hai hàng, không cắt nhãn, màu/biểu tượng riêng; kiểm tra tổng giờ sáu thẻ với dữ liệu SQLite độc lập (0,33 / 0,17 / 0,17 / 0,00 / 0,09 / 0,17 giờ). Checksum dữ liệu/cài đặt cũ khớp trước/sau.
+
+## Cập nhật 1.9.2 — đổi tên Hoạt động hàng ngày
+
+- Đổi tên mục trên thanh bên, tiêu đề trang và menu thành Hoạt động hàng ngày; cập nhật README/SPEC. Nhãn thanh bên tự thu cỡ chữ để không cắt tên. Danh mục Sinh hoạt cá nhân giữ tên riêng.
+- Build/chữ ký đạt, cập nhật cả hai bản Applications lên 1.9.2 (19). Kiểm tra giao diện bản thật thấy nút và tiêu đề mới. Checksum entries/goals/activities, lịch sử ngủ/hoạt động, cài đặt nhắc và preferences khớp trước/sau.
+
+## Cập nhật 1.9.1 — bảng nhắc bo góc, tự co theo nội dung
+
+- Thay khung nội dung 440×570 bằng thẻ bo góc rộng 400, chiều cao đo từ nội dung, bỏ Spacer dưới/thanh tiêu đề và chú thích thừa. Lưới cao vừa số hàng (tối đa bốn hàng rồi cuộn), ghi chú chỉ mở khi bấm, có đóng/lặp lại/bỏ qua. Resize giữ góc trên phải. Giữ nguyên model lưu dữ liệu, bộ đếm 60 giây và âm 10 giây.
+- Build release/chữ ký đạt. UI cô lập `.smoke-compact-v191`: năm hoạt động cho ảnh thẻ 400×354; mở ghi chú thành 400×390, focus vào ô nhập, thử nhập và bấm Học đóng bảng. Lần mở lại ghi chú ẩn. Lưu trữ ba danh mục trong dữ liệu thử để còn hai hoạt động: thẻ tự co thành 400×234, không dư vùng danh sách. Đã xem ảnh cả ba kích thước. Nút đóng trên thẻ hoạt động. Không ghi hoạt động từ preview và không sửa cài đặt danh mục trên dữ liệu thật.
+- Cài cả hai bản Applications lên 1.9.1 (18), mở lại bản chính thành công và xác minh chữ ký. Đối chiếu dữ liệu thật với snapshot trước cập nhật cho các entries/goals/activities có sẵn, lịch sử ngủ/hoạt động cá nhân và cài đặt; giữ nguyên dữ liệu cũ.
 
 ## Cập nhật 1.9.0 — Hoạt động cá nhân và sửa thời gian khi về muộn
 

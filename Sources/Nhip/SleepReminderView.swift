@@ -13,8 +13,16 @@ struct SleepReminderView: View {
                     }
                     Spacer()
                 }
+                HStack {
+                    Spacer()
+                    Button { model.dismissSleepAlert() } label: {
+                        Label("Tắt lời nhắc", systemImage: "bell.slash.fill")
+                    }.buttonStyle(.bordered).tint(.indigo)
+                        .accessibilityLabel("Tắt lời nhắc ngủ")
+                        .keyboardShortcut(.cancelAction)
+                }
             }
-        }.padding(24).frame(width: 420, height: 130)
+        }.padding(24).frame(width: 420, height: 164)
             .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 18))
             .overlay(RoundedRectangle(cornerRadius: 18).stroke(.primary.opacity(0.08)))
     }

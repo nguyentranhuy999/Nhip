@@ -4,35 +4,48 @@ import NhipCore
 struct QuickCheckInView: View {
     @ObservedObject var model: AppModel
     @State private var note = ""
+    @State private var showNote = false
+    @FocusState private var noteFocused: Bool
+    private let width: CGFloat = 400
+    private var gridHeight: CGFloat {
+        let rows = min(4, max(1, (model.quickActivities.count + 1) / 2))
+        return CGFloat(rows * 52 + (rows - 1) * 8)
+    }
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 9) {
                 Image(systemName: "waveform.path").foregroundStyle(.indigo)
+                    .frame(width: 28, height: 28).background(.indigo.opacity(0.10), in: Circle())
                 Text("Ghi nhận nhanh").font(.headline)
                 Spacer()
-            }
-            Text("Bạn vừa làm gì?").font(.system(size: 27, weight: .bold, design: .rounded))
-            if let span = model.currentInterval {
-                Text("\(model.dateLabel(span.start)) · \(model.time(span.start))–\(model.time(span.end)) · \(durationText(span.seconds))").foregroundStyle(.secondary)
                 if model.previewInterval != nil {
-                    Label("Xem thử · không lưu vào nhật ký", systemImage: "eye").font(.caption).foregroundStyle(.indigo)
+                    Text("Xem thử").font(.caption2.weight(.medium)).foregroundStyle(.indigo)
+                        .padding(.horizontal, 8).padding(.vertical, 4).background(.indigo.opacity(0.08), in: Capsule())
+                        .accessibilityLabel("Xem thử · không lưu vào nhật ký")
+                }
+                Button { WindowManager.shared.quick?.close() } label: { Image(systemName: "xmark.circle.fill").font(.title3) }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel("Đóng lời nhắc").help("Đóng lời nhắc")
+            }
+            if let span = model.currentInterval {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Bạn vừa làm gì?").font(.system(size: 23, weight: .bold, design: .rounded))
+                    Text("\(model.time(span.start))–\(model.time(span.end)) · \(durationText(span.seconds))")
+                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 }
                 if model.previewInterval == nil && Engine.isAnswered(model.journal, interval: span) {
                     Label("Khoảng này đã được ghi nhận.", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
                     Button("Xem hoặc chỉnh sửa trong dashboard") { WindowManager.shared.showDashboard(); WindowManager.shared.quick?.close() }
                 } else {
-                    Text("Bấm vào ô hoạt động để ghi nhận ngay.").font(.caption).foregroundStyle(.secondary)
-                    TextField("Ghi chú trước khi chọn (tùy chọn)", text: $note).textFieldStyle(.roundedBorder)
                     ScrollView {
-                        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible())], spacing: 8) {
                             ForEach(model.quickActivities) { activity in
                                 Button { record(span, id: activity.id) } label: {
                                     Label(activity.name, systemImage: activity.symbol)
                                         .font(.callout.weight(.medium)).lineLimit(2)
-                                        .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
-                                        .padding(12)
+                                        .padding(.horizontal, 12)
+                                        .frame(maxWidth: .infinity, minHeight: 52, maxHeight: 52, alignment: .leading)
                                         .foregroundStyle(Color(hex: activity.color))
-                                        .background(Color(hex: activity.color).opacity(0.10), in: RoundedRectangle(cornerRadius: 10))
+                                        .background(Color(hex: activity.color).opacity(0.10), in: RoundedRectangle(cornerRadius: 12))
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(ActivityTileButtonStyle())
@@ -40,33 +53,54 @@ struct QuickCheckInView: View {
                                 .help("Bấm vào ô để ghi nhận \(activity.name)")
                             }
                         }
-                    }.frame(maxHeight: 245)
-                    HStack {
+                    }.frame(height: gridHeight)
+                    if showNote {
+                        TextField("Ghi chú (tùy chọn)", text: $note).textFieldStyle(.roundedBorder)
+                            .focused($noteFocused).accessibilityLabel("Ghi chú trước khi chọn hoạt động")
+                    }
+                    HStack(spacing: 12) {
                         if let id = model.journal.runtime.lastActivityID, let activity = model.quickActivities.first(where: { $0.id == id }) {
-                            Button("Giống lần trước: \(activity.name)") { record(span, id: id) }.font(.caption)
+                            Button("Lặp lại: \(activity.name)") { record(span, id: id) }
+                                .font(.caption).lineLimit(1).help("Giống lần trước: \(activity.name)")
                         }
                         Spacer()
+                        Button {
+                            showNote.toggle()
+                            if showNote { WindowManager.shared.quick?.makeKeyAndOrderFront(nil); noteFocused = true }
+                        } label: { Label("Ghi chú", systemImage: "square.and.pencil") }
+                            .buttonStyle(.borderless).font(.caption).tint(showNote ? .indigo : .secondary)
                         Button("Bỏ qua") {
                             if model.previewInterval != nil { WindowManager.shared.quick?.close() }
                             else { model.skip(span) }
-                        }
+                        }.buttonStyle(.borderless).font(.caption)
                     }
                 }
             } else {
-                Text("Chưa có lượt ghi nhận mới. Nhịp sẽ hỏi bạn khi hết một chu kỳ theo dõi.").foregroundStyle(.secondary)
+                Text("Chưa có lượt ghi nhận mới.").foregroundStyle(.secondary)
                 if !model.journal.runtime.enabled { Button("Bắt đầu theo dõi") { model.start() }.buttonStyle(.borderedProminent) }
                 Button("Mở dashboard để thêm thủ công") { WindowManager.shared.showDashboard() }
             }
-            Spacer(minLength: 0)
-        }.padding(24).frame(width: 440, height: 570).modifier(FeedbackModifier(model: model))
-            .onChange(of: model.currentInterval?.id) { _ in note = "" }
-            .onDisappear { note = "" }
+        }.padding(20).frame(width: width).fixedSize(horizontal: false, vertical: true)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 22))
+            .overlay(RoundedRectangle(cornerRadius: 22).stroke(.primary.opacity(0.08)))
+            .background(GeometryReader { geometry in Color.clear.preference(key: QuickReminderHeight.self, value: geometry.size.height) })
+            .onPreferenceChange(QuickReminderHeight.self) { height in
+                Task { @MainActor in WindowManager.shared.resizeQuick(height: height) }
+            }
+            .modifier(FeedbackModifier(model: model))
+            .onChange(of: model.currentInterval?.id) { _ in note = ""; showNote = false }
+            .onDisappear { note = ""; showNote = false }
     }
     private func record(_ span: Span, id: UUID) {
         if model.previewInterval != nil { note = ""; WindowManager.shared.quick?.close(); return }
         model.answer(span, activityID: id, note: note)
         if model.error == nil { note = ""; WindowManager.shared.quick?.close() }
     }
+}
+
+private struct QuickReminderHeight: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = nextValue() }
 }
 
 private struct ActivityTileButtonStyle: ButtonStyle {

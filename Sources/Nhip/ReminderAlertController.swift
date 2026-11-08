@@ -10,10 +10,10 @@ import NhipCore
     private var generation = 0
     var onEvent: ((String, Double) -> Void)?
 
-    func start(soundEnabled: @escaping () -> Bool, onExpire: @escaping () -> Void) {
+    func start(soundEnabled: @escaping () -> Bool, soundInterval: TimeInterval = ReminderLifetime.soundInterval, onExpire: @escaping () -> Void) {
         cancel()
         self.soundEnabled = soundEnabled; expiration = onExpire
-        lifetime = ReminderLifetime(at: Date(), uptime: ProcessInfo.processInfo.systemUptime)
+        lifetime = ReminderLifetime(at: Date(), uptime: ProcessInfo.processInfo.systemUptime, soundInterval: soundInterval)
         onEvent?("start", 0)
         advance()
     }

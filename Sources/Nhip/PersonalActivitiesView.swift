@@ -6,7 +6,7 @@ struct PersonalActivitiesView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("Hoạt động cá nhân").font(.system(size: 29, weight: .bold, design: .rounded))
+                Text("Hoạt động hàng ngày").font(.system(size: 29, weight: .bold, design: .rounded))
                 SleepTrackingView(model: model)
                 TimedActivitiesView(model: model)
             }.padding(28)
@@ -27,30 +27,35 @@ private struct TimedActivitiesView: View {
     @State private var editor: PersonalTimeDraft?
     @State private var historyLimit = 10
     private var active: PersonalActivitySession? { model.journal.personalHistory?.active }
+    private var activities: [Activity] { PersonalTracking.manualActivities(model.journal) }
     private var history: [PersonalActivitySession] {
         (model.journal.personalHistory?.sessions ?? []).filter { $0.end != nil && entry(for: $0) != nil }
             .sorted { (entry(for: $0)?.start ?? $0.start) > (entry(for: $1)?.start ?? $1.start) }
     }
     var body: some View {
-        Card(title: "Thể thao & sinh hoạt") {
-            ForEach(PersonalActivityKind.timedKinds) { kind in activityRow(kind) }
+        Card(title: "Tự ghi nhận hoạt động") {
+            ForEach(activities) { activity in activityRow(activity) }
+            if activities.isEmpty {
+                Button("Chọn hoạt động trong Cài đặt") { WindowManager.shared.showSettings() }
+            }
             if !history.isEmpty {
                 Divider()
                 ForEach(Array(history.prefix(historyLimit))) { session in
                     if let entry = entry(for: session) {
                         HStack(spacing: 12) {
-                            Image(systemName: session.kind.symbol).foregroundStyle(Color(hex: session.kind.color)).frame(width: 24)
+                            Image(systemName: model.journal.activity(entry.activityID)?.symbol ?? "clock.fill")
+                                .foregroundStyle(Color(hex: model.journal.activity(entry.activityID)?.color ?? "6366F1")).frame(width: 24)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(model.journal.activity(entry.activityID)?.name ?? session.kind.title).font(.headline)
+                                Text(model.journal.activity(entry.activityID)?.name ?? "Hoạt động").font(.headline)
                                 Text("\(model.dateLabel(entry.start)) \(model.time(entry.start)) – \(model.dateLabel(entry.end)) \(model.time(entry.end))")
                                     .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                             }
                             Spacer()
                             Text(durationText(entry.seconds)).font(.callout).monospacedDigit()
                             Button { edit(session) } label: { Label("Sửa giờ", systemImage: "clock.arrow.circlepath") }
-                                .accessibilityLabel("Sửa giờ \(session.kind.title.lowercased())")
+                                .accessibilityLabel("Sửa giờ \(activityName(session).lowercased())")
                             Button(role: .destructive) { model.deletePersonalActivity(session) } label: { Image(systemName: "trash") }
-                                .buttonStyle(.borderless).accessibilityLabel("Xóa lần ghi nhận \(session.kind.title.lowercased())")
+                                .buttonStyle(.borderless).accessibilityLabel("Xóa lần ghi nhận \(activityName(session).lowercased())")
                         }.padding(.vertical, 6)
                     }
                 }
@@ -62,41 +67,44 @@ private struct TimedActivitiesView: View {
     private func entry(for session: PersonalActivitySession) -> Entry? {
         model.journal.entries.first { $0.id == session.entryID }
     }
+    private func activityName(_ session: PersonalActivitySession) -> String {
+        model.journal.activity(entry(for: session)?.activityID ?? session.activityID)?.name ?? "Hoạt động"
+    }
     private func edit(_ session: PersonalActivitySession) {
         guard let entry = entry(for: session) else { return }
-        editor = PersonalTimeDraft(id: session.id, title: session.kind.title, start: entry.start, end: entry.end)
+        editor = PersonalTimeDraft(id: session.id, title: activityName(session), start: entry.start, end: entry.end)
     }
-    private func activityRow(_ kind: PersonalActivityKind) -> some View {
-        let session = active.flatMap { $0.kind == kind ? $0 : nil }
-        let accent = Color(hex: kind.color)
+    private func activityRow(_ activity: Activity) -> some View {
+        let session = active.flatMap { $0.activityID == activity.id ? $0 : nil }
+        let accent = Color(hex: activity.color)
         return HStack(spacing: 16) {
-            Image(systemName: kind.symbol).font(.system(size: 23)).foregroundStyle(accent)
+            Image(systemName: activity.symbol).font(.system(size: 23)).foregroundStyle(accent)
                 .frame(width: 48, height: 48).background(accent.opacity(0.12), in: RoundedRectangle(cornerRadius: 13))
             VStack(alignment: .leading, spacing: 5) {
-                Text(kind.title).font(.headline)
+                Text(activity.name).font(.headline)
                 if let session {
                     Text("Bắt đầu \(model.time(session.start)) · \(model.dateLabel(session.start))")
                         .font(.caption).monospacedDigit().foregroundStyle(accent)
                 }
             }
             Spacer(minLength: 8)
-            Button { model.startPersonalActivity(kind) } label: {
+            Button { model.startPersonalActivity(activity.id) } label: {
                 Label("Bắt đầu", systemImage: "play.fill").frame(width: 90)
             }.buttonStyle(.borderedProminent).tint(accent).controlSize(.large)
-                .disabled(model.journal.isRecordingPersonalActivity).accessibilityLabel("Bắt đầu \(kind.title.lowercased())")
+                .disabled(model.journal.isRecordingPersonalActivity).accessibilityLabel("Bắt đầu \(activity.name.lowercased())")
             Button {
                 guard let session else { return }
-                editor = PersonalTimeDraft(id: session.id, title: kind.title, start: session.start, end: Date(), finishing: true)
+                editor = PersonalTimeDraft(id: session.id, title: activity.name, start: session.start, end: Date(), finishing: true)
             } label: {
                 Label("Kết thúc", systemImage: "stop.fill").frame(width: 100)
             }.buttonStyle(.bordered).tint(accent).controlSize(.large)
-                .disabled(session == nil).accessibilityLabel("Kết thúc \(kind.title.lowercased())")
+                .disabled(session == nil).accessibilityLabel("Kết thúc \(activity.name.lowercased())")
             Group {
                 if let session {
                     Button { model.deletePersonalActivity(session) } label: { Image(systemName: "xmark.circle") }
                         .buttonStyle(.borderless).foregroundStyle(.secondary)
-                        .accessibilityLabel("Hủy lần ghi nhận \(kind.title.lowercased())")
-                        .help("Hủy lần ghi nhận \(kind.title.lowercased())")
+                        .accessibilityLabel("Hủy lần ghi nhận \(activity.name.lowercased())")
+                        .help("Hủy lần ghi nhận \(activity.name.lowercased())")
                 } else { Color.clear }
             }.frame(width: 24)
         }.padding(14).background(accent.opacity(0.04), in: RoundedRectangle(cornerRadius: 14))
@@ -132,7 +140,7 @@ private struct PersonalTimeEditor: View {
                 guard let active = candidate.personalHistory?.active, active.id == draft.id else {
                     validationError = "Phiên hoạt động này đã được kết thúc hoặc hủy."; return
                 }
-                try PersonalTracking.finish(&candidate, kind: active.kind, at: draft.end, start: draft.start, resumeAt: Date())
+                try PersonalTracking.finish(&candidate, sessionID: active.id, at: draft.end, start: draft.start, resumeAt: Date())
             } else {
                 try PersonalTracking.edit(&candidate, sessionID: draft.id, start: draft.start, end: draft.end)
             }

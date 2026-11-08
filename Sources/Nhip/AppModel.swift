@@ -15,6 +15,7 @@ import NhipCore
     @Published var selectedInterval: UUID?
     @Published var previewInterval: Span?
     @Published var loginEnabled = false
+    @Published var settingsTab = 3
     @Published var showAllTimeSummary = true
     @Published var showGoals = false
     @Published var showPersonalActivities = false
@@ -48,6 +49,7 @@ import NhipCore
             repository = repo
             journal = try repo.load()
             PersonalTracking.prepare(&journal)
+            SleepPlan.prepareStatistics(journal: &journal)
             Engine.recover(&journal)
             if demo && journal.entries.isEmpty && !args.contains("--smoke-reminder") { seedDemo() }
             try repo.save(journal)
@@ -64,13 +66,20 @@ import NhipCore
         if let id = selectedInterval { return journal.intervals.first { $0.id == id } }
         return Engine.recentCheckIn(journal, at: Date())
     }
+    var userName: String {
+        let saved = journal.preferences.userName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !saved.isEmpty { return saved }
+        let systemName = NSFullUserName().trimmingCharacters(in: .whitespacesAndNewlines)
+        return systemName.isEmpty ? "bạn" : systemName
+    }
     var status: String {
         if storageFailed { return "Không thể mở dữ liệu" }
         if let session = journal.sleepHistory?.active { return session.kind == .nap ? "Đang ngủ trưa" : "Đang ngủ đêm" }
-        if let session = journal.personalHistory?.active { return session.kind == .exercise ? "Đang tập thể thao" : "Đang sinh hoạt cá nhân" }
+        if let session = journal.personalHistory?.active { return "Đang ghi nhận: \(journal.activity(session.activityID)?.name ?? "hoạt động")" }
         if systemSuspended { return "Tạm dừng theo máy" }
         if let until = journal.runtime.pauseUntil { return "Tạm dừng đến \(time(until))" }
         if !journal.runtime.enabled { return "Đã tạm dừng" }
+        if quickActivities.isEmpty { return "Chỉ ghi nhận thủ công" }
         if journal.runtime.segmentStart == nil { return "Đang chờ lịch" }
         return "Đang theo dõi"
     }
@@ -179,9 +188,12 @@ import NhipCore
     @discardableResult func perform(_ operation: (inout Journal) throws -> Void) -> Bool {
         guard !storageFailed else { return false }
         do {
-            var draft = journal; try operation(&draft); PersonalTracking.prepare(&draft); try Engine.validate(draft)
+            var draft = journal; try operation(&draft); PersonalTracking.prepare(&draft); SleepPlan.prepareStatistics(journal: &draft)
+            if PersonalTracking.quickActivities(draft).isEmpty { Engine.close(&draft, at: Date()) }
+            try Engine.validate(draft)
             try repository?.save(draft); undoState = journal; undoBaselineIntervals = Set(draft.intervals.map(\.id)); journal = draft
             syncSleepReminders()
+            if quickActivities.isEmpty { WindowManager.shared.quick?.close(); cancelReminder() }
             return true
         } catch { self.error = error.localizedDescription; return false }
     }
@@ -253,10 +265,14 @@ import NhipCore
             scheduleNext(); notice = "Đã xóa lần ghi nhận giấc ngủ."
         }
     }
-    func startPersonalActivity(_ kind: PersonalActivityKind) {
-        if perform({ try PersonalTracking.start(&$0, kind: kind, at: Date()) }) {
+    func setRecordingMode(_ mode: ActivityRecordingMode, activityID: UUID) {
+        advance()
+        if perform({ try PersonalTracking.setRecordingMode(&$0, activityID: activityID, mode: mode) }) { advance() }
+    }
+    func startPersonalActivity(_ activityID: UUID) {
+        if perform({ try PersonalTracking.start(&$0, activityID: activityID, at: Date()) }) {
             WindowManager.shared.quick?.close(); scheduleNext()
-            notice = "Đã bắt đầu \(kind.title.lowercased())."
+            notice = "Đã bắt đầu \(journal.activity(activityID)?.name.lowercased() ?? "hoạt động")."
         }
     }
     func savePersonalActivity(_ candidate: Journal) -> Bool {
@@ -266,7 +282,7 @@ import NhipCore
     }
     func deletePersonalActivity(_ session: PersonalActivitySession) {
         if perform({ try PersonalTracking.delete(&$0, sessionID: session.id, at: Date()) }) {
-            scheduleNext(); notice = "Đã xóa lần ghi nhận \(session.kind.title.lowercased())."
+            scheduleNext(); notice = "Đã xóa lần ghi nhận \(journal.activity(session.activityID)?.name.lowercased() ?? "hoạt động")."
         }
     }
     func previewSleepReminder() {
@@ -282,7 +298,8 @@ import NhipCore
         }
         activeSleepAlert = SleepAlert(reminder: reminder, date: date, preview: preview)
         WindowManager.shared.showSleep()
-        sleepAlert.start(soundEnabled: { true }) { [weak self] in self?.dismissSleepAlert() }
+        if preview { WindowManager.shared.sleep?.makeKeyAndOrderFront(nil) }
+        sleepAlert.start(soundEnabled: { true }, soundInterval: 3) { [weak self] in self?.dismissSleepAlert() }
     }
     func dismissSleepAlert() {
         sleepAlert.cancel(); activeSleepAlert = nil
@@ -293,7 +310,7 @@ import NhipCore
         quickAlert.cancel(); previewInterval = nil; selectedInterval = nil
     }
     private func startQuickAlert() {
-        quickAlert.start(soundEnabled: { [weak self] in self?.journal.preferences.sound ?? false }) {
+        quickAlert.start(soundEnabled: { [weak self] in self?.journal.preferences.sound ?? false }, soundInterval: 3) {
             WindowManager.shared.quick?.close()
         }
     }
@@ -342,6 +359,9 @@ import NhipCore
         deadlineTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { _ in Task { @MainActor in AppModel.shared.advance() } }
     }
     func previewReminder() {
+        guard !quickActivities.isEmpty else {
+            error = "Chọn Nhắc định kỳ hoặc Cả hai cho ít nhất một hoạt động trong Cài đặt → Hoạt động."; return
+        }
         let end = Date()
         previewInterval = Span(start: end.addingTimeInterval(-Double(journal.preferences.intervalMinutes * 60)), end: end)
         WindowManager.shared.showQuick(automatic: true)
@@ -350,7 +370,7 @@ import NhipCore
         startQuickAlert()
     }
     func presentReminder(_ span: Span) {
-        guard !systemSuspended, !storageFailed else { return }
+        guard !systemSuspended, !storageFailed, !quickActivities.isEmpty else { return }
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: ["nhip.checkin"])
         center.removeDeliveredNotifications(withIdentifiers: ["nhip.checkin"])
@@ -438,7 +458,7 @@ import NhipCore
         alert.informativeText = "Thao tác này xóa dữ liệu trong ứng dụng. Các file CSV/JSON đã xuất vẫn còn."
         alert.addButton(withTitle: "Xóa toàn bộ"); alert.addButton(withTitle: "Hủy")
         if alert.runModal() == .alertFirstButtonReturn {
-            cancelReminder(); perform { $0 = Journal() }; undoState = nil
+            cancelReminder(); perform { $0.reset() }; undoState = nil
         }
     }
     private func seedDemo() {

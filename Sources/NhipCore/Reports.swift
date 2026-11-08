@@ -21,7 +21,38 @@ public struct ChartPoint: Identifiable {
     public var activityID: UUID
     public var seconds: Double
 }
+public struct PriorityComparison {
+    public var activityIDs: [UUID]
+    public var currentRange: DateInterval
+    public var previousRange: DateInterval
+    public var currentSeconds: Double
+    public var previousSeconds: Double
+    public var deltaSeconds: Double { currentSeconds - previousSeconds }
+    public var changeFraction: Double? { previousSeconds > 0 ? deltaSeconds / previousSeconds : nil }
+}
 public enum Reports {
+    public static func priorityComparison(_ j: Journal, period: ReportPeriod, date: Date, now: Date = Date()) -> PriorityComparison {
+        let ranges = comparisonRanges(period: period, date: date, now: now, calendar: j.preferences.calendar)
+        return priorityTotals(j, currentRange: ranges.0, previousRange: ranges.1)
+    }
+    public static func dailyPriorityTotals(_ j: Journal, date: Date) -> PriorityComparison {
+        let calendar = j.preferences.calendar
+        let current = range(.day, date: date, calendar: calendar)
+        let previousDate = calendar.date(byAdding: .day, value: -1, to: current.start)!
+        let previous = range(.day, date: previousDate, calendar: calendar)
+        return priorityTotals(j, currentRange: current, previousRange: previous)
+    }
+    private static func priorityTotals(_ j: Journal, currentRange: DateInterval, previousRange: DateInterval) -> PriorityComparison {
+        let ids = j.activities.filter { $0.isPriority == true }.map(\.id)
+        let selected = Set(ids)
+        var current: Double = 0, previous: Double = 0
+        for entry in j.entries where selected.contains(entry.activityID) {
+            current += overlap(entry.start, entry.end, currentRange.start, currentRange.end)
+            previous += overlap(entry.start, entry.end, previousRange.start, previousRange.end)
+        }
+        return PriorityComparison(activityIDs: ids, currentRange: currentRange, previousRange: previousRange,
+                                  currentSeconds: current, previousSeconds: previous)
+    }
     public static func allTimeRange(_ j: Journal, now: Date = Date()) -> DateInterval {
         guard let first = j.entries.map(\.start).min(), let last = j.entries.map(\.end).max() else {
             return DateInterval(start: now, duration: 0)

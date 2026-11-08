@@ -57,6 +57,7 @@ struct GoalsView: View {
                     if daily.isEmpty && sleepGoals.isEmpty {
                         emptyState("Chưa có mục tiêu mỗi ngày", detail: "Thêm một hoạt động và số giờ bạn muốn đạt ở phía trên.")
                     } else {
+                        if !daily.isEmpty { Text("Nhiệm vụ trong ngày").font(.headline) }
                         ForEach(daily) { goal in goalRow(goal, now: now) }
                     }
                     if !sleepGoals.isEmpty {

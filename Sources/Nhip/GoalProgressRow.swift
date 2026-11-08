@@ -25,7 +25,7 @@ struct GoalProgressRow: View {
                     Label(name, systemImage: activity?.symbol ?? "target").font(.headline).foregroundStyle(color)
                     if activity?.archived == true { Text("Đã lưu trữ").font(.caption).foregroundStyle(.secondary) }
                     Spacer()
-                    Text(goal.isDaily ? "Mỗi ngày" : "Mỗi tuần").font(.caption).foregroundStyle(.secondary)
+                    if !goal.isDaily { Text("Mỗi tuần").font(.caption).foregroundStyle(.secondary) }
                 }
                 if goal.direction == "observe" {
                     Text("Chỉ quan sát · \(durationText(progress.seconds)) đã ghi nhận").font(.callout).foregroundStyle(.secondary)

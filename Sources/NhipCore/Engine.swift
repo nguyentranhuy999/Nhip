@@ -7,7 +7,7 @@ public enum Engine {
         if j.preferences.allows(now) { begin(&j, at: now) }
     }
     public static func begin(_ j: inout Journal, at now: Date) {
-        guard !j.isRecordingPersonalActivity else { return }
+        guard !j.isRecordingPersonalActivity, !PersonalTracking.quickActivities(j).isEmpty else { return }
         j.runtime.segmentStart = now
         let due = now.addingTimeInterval(Double(j.preferences.intervalMinutes * 60))
         j.runtime.nextDue = min(due, j.preferences.scheduleEnd(at: now) ?? due)
@@ -15,6 +15,7 @@ public enum Engine {
     }
     @discardableResult public static func tick(_ j: inout Journal, at now: Date) -> [Span] {
         guard j.runtime.enabled, !j.isRecordingPersonalActivity else { return [] }
+        guard !PersonalTracking.quickActivities(j).isEmpty else { close(&j, at: now); return [] }
         if let pause = j.runtime.pauseUntil {
             guard now >= pause else { return [] }
             j.runtime.pauseUntil = nil
@@ -71,7 +72,7 @@ public enum Engine {
     }
     public static func isAnswered(_ j: Journal, interval: Span) -> Bool { unanswered(j, in: interval).isEmpty }
     public static func recentCheckIn(_ j: Journal, at now: Date) -> Span? {
-        guard !j.isRecordingPersonalActivity else { return nil }
+        guard !j.isRecordingPersonalActivity, !PersonalTracking.quickActivities(j).isEmpty else { return nil }
         guard let latest = j.intervals.max(by: { $0.end < $1.end }),
               now >= latest.end,
               now.timeIntervalSince(latest.end) < Double(j.preferences.intervalMinutes * 60),
