@@ -193,8 +193,10 @@ struct PreferencesView: View {
 struct CategoryEditor: View {
     @ObservedObject var model: AppModel
     @State var activity: Activity
+    @State private var symbolQuery = ""
+    @State private var symbolGroup: ActivitySymbolGroup = .all
     @Environment(\.dismiss) private var dismiss
-    let symbols = ["book.fill", "magnifyingglass", "figure.run", "gamecontroller.fill", "briefcase.fill", "house.fill", "cup.and.saucer.fill", "music.note", "heart.fill", "pencil", "person.2.fill", "circle.fill"]
+    private var symbols: [ActivitySymbol] { ActivitySymbols.matching(symbolQuery, group: symbolGroup) }
     let colors = ["6366F1", "0EA5A4", "F59E0B", "EC4899", "3B82F6", "A78BFA", "84A65B", "EF4444", "94A3B8"]
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -202,12 +204,59 @@ struct CategoryEditor: View {
             TextField("Tên", text: $activity.name).textFieldStyle(.roundedBorder)
             Toggle("Hoạt động ưu tiên", isOn: Binding(get: { activity.isPriority == true }, set: { activity.isPriority = $0 }))
             HStack { ForEach(colors, id: \.self) { color in Button { activity.color = color } label: { Circle().fill(Color(hex: color)).frame(width: 28, height: 28).overlay(Circle().stroke(activity.color == color ? Color.primary : .clear, lineWidth: 2).padding(-3)) }.buttonStyle(.plain).accessibilityLabel("Màu \(color)") } }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6)) { ForEach(symbols, id: \.self) { symbol in Button { activity.symbol = symbol } label: { Image(systemName: symbol).frame(width: 38, height: 34).background(activity.symbol == symbol ? .indigo.opacity(0.15) : .clear, in: RoundedRectangle(cornerRadius: 7)) } } }
-            HStack { Spacer(); Button("Hủy") { dismiss() }; Button("Lưu") {
+            symbolPicker
+            HStack { Spacer(); Button("Hủy") { dismiss() }.keyboardShortcut(.cancelAction); Button("Lưu") {
                 activity.name = activity.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                model.perform { j in if let index = j.activities.firstIndex(where: { $0.id == activity.id }) { j.activities[index] = activity } }
-                if model.error == nil { dismiss() }
+                if model.perform({ journal in
+                    guard let index = journal.activities.firstIndex(where: { $0.id == activity.id }) else {
+                        throw JournalError.invalid("Không tìm thấy hoạt động để sửa.")
+                    }
+                    var updated = activity
+                    PersonalTracking.preserveRole(of: journal.activities[index], in: &updated)
+                    journal.activities[index] = updated
+                }) { dismiss() }
             }.buttonStyle(.borderedProminent).disabled(activity.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
-        }.padding(24).frame(width: 460)
+        }.padding(24).frame(width: 620)
+    }
+    private var symbolPicker: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                Text("Biểu tượng").font(.headline)
+                Spacer()
+                Image(systemName: activity.symbol).foregroundStyle(Color(hex: activity.color))
+                Text(ActivitySymbols.all.first { $0.name == activity.symbol }?.title ?? "Hiện tại")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+            HStack(spacing: 10) {
+                TextField("Tìm biểu tượng", text: $symbolQuery).textFieldStyle(.roundedBorder).accessibilityLabel("Tìm biểu tượng")
+                if !symbolQuery.isEmpty {
+                    Button { symbolQuery = "" } label: { Image(systemName: "xmark.circle.fill") }
+                        .buttonStyle(.borderless).accessibilityLabel("Xóa tìm kiếm")
+                }
+                Picker("Nhóm biểu tượng", selection: $symbolGroup) {
+                    ForEach(ActivitySymbolGroup.allCases) { group in Text(group.title).tag(group) }
+                }.labelsHidden().frame(width: 160).accessibilityLabel("Nhóm biểu tượng")
+            }
+            Text("\(symbols.count) biểu tượng").font(.caption).foregroundStyle(.secondary)
+            ScrollView {
+                if symbols.isEmpty {
+                    Text("Không tìm thấy biểu tượng").foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 200)
+                } else {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 8), spacing: 8) {
+                        ForEach(symbols) { symbol in
+                            Button { activity.symbol = symbol.name } label: {
+                                Image(systemName: symbol.name).font(.system(size: 20))
+                                    .frame(maxWidth: .infinity).frame(height: 44)
+                                    .foregroundStyle(activity.symbol == symbol.name ? Color(hex: activity.color) : Color.primary)
+                                    .background(activity.symbol == symbol.name ? Color(hex: activity.color).opacity(0.15) : Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
+                                    .overlay(RoundedRectangle(cornerRadius: 9).stroke(activity.symbol == symbol.name ? Color(hex: activity.color) : .clear, lineWidth: 1.5))
+                            }.buttonStyle(.plain).help(symbol.title).accessibilityLabel("Biểu tượng \(symbol.title)")
+                                .accessibilityValue(activity.symbol == symbol.name ? "Đang chọn" : "")
+                        }
+                    }.padding(3)
+                }
+            }.frame(height: 230)
+        }
     }
 }

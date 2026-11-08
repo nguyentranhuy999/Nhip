@@ -7,6 +7,7 @@ public struct Activity: Codable, Identifiable, Equatable {
     public var symbol: String
     public var archived: Bool
     public var personalKind: PersonalActivityKind?
+    public var personalKindResolved: Bool? // An explicit nil role must survive cosmetic edits.
     public var recordingMode: ActivityRecordingMode?
     public var isPriority: Bool? // Missing in older journals means unselected.
     public init(id: UUID = UUID(), name: String, color: String, symbol: String = "circle.fill", archived: Bool = false, personalKind: PersonalActivityKind? = nil, recordingMode: ActivityRecordingMode? = nil, isPriority: Bool? = nil) {

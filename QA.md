@@ -1,5 +1,13 @@
-# Kiểm tra bản 1.0–1.12.4
+# Kiểm tra bản 1.0–1.13.0
 
+
+## Cập nhật 1.13.0 — thư viện biểu tượng tìm kiếm và chia nhóm
+
+- Thay 12 icon bằng thư viện **148 biểu tượng** có trên máy kiểm tra; sáu nhóm và Tất cả, nhãn/từ khóa tiếng Việt, tìm kiếm có dấu/không dấu/tiếng Anh, lọc theo nhóm. Bộ chọn có preview tên/icon, số kết quả, lưới cuộn tám cột, trạng thái đang chọn và không tìm thấy. Chỉ lưu khi Lưu, giữ biểu tượng cũ nếu chưa đổi.
+- **136/136 Core checks đạt**. Thêm ba hồi quy cho thay đổi icon giữ vai trò của hoạt động thông thường (kể cả chọn hình chạy/nhà/cà phê), vai trò thể thao/sinh hoạt/ngủ qua đổi tên/icon, và JSON/SQLite/legacy. Activity.personalKindResolved tùy chọn phân biệt nil đã chốt với nil legacy; vai trò gốc được chốt khi lưu CategoryEditor.
+- Kiểm tra trực tiếp catalog bằng executable tạm: 148 tên duy nhất có sẵn; “boi”/“bơi”/“SWIMMING” tìm được hình bơi; “yoga” trong Sức khỏe và không xuất hiện trong Học; “ca phe” tìm hình cà phê; truy vấn không tồn tại trả rỗng.
+- UI fixture riêng `.smoke-symbol-picker-v1130`, bundle `vn.local.nhip.demo.symbolpicker`: ảnh xác nhận sheet vừa màn hình, preview Nghiên cứu, số 148 và trạng thái icon đang chọn. Đã lưu biểu tượng Bơi lội cho Nghiên cứu; bộ chọn cách ghi vẫn Nhắc định kỳ, cờ ưu tiên giữ; SQLite giữ icon/metadata vai trò mới và màu được chọn trong bản thử. Entry/Goal/Preferences/lịch sử fixture giữ nguyên.
+- Release **1.13.0 (36)** build/chữ ký đạt, cập nhật cả hai bản Applications. Mở lại bản thật thấy bộ chọn mới; quan sát người dùng chọn nhóm Sinh hoạt (25 icon) và hình Giường ngủ cho Nghỉ ngơi. Không đổi icon hoặc lưu thay người dùng trong dữ liệu thật. Nhật ký và cài đặt trước cập nhật được giữ, các lựa chọn người dùng thực hiện trong lúc kiểm tra không bị ghi đè.
 
 ## Cập nhật 1.12.4 — một phần so sánh dựa trên giờ ưu tiên
 

@@ -42,7 +42,12 @@ public struct PersonalActivityHistory: Codable, Equatable {
 
 public enum PersonalTracking {
     public static func kind(of activity: Activity) -> PersonalActivityKind? {
-        activity.personalKind ?? PersonalActivityKind.allCases.first { activity.name == $0.title || activity.symbol == $0.symbol }
+        if activity.personalKindResolved == true { return activity.personalKind }
+        return activity.personalKind ?? PersonalActivityKind.allCases.first { activity.name == $0.title || activity.symbol == $0.symbol }
+    }
+    public static func preserveRole(of original: Activity, in updated: inout Activity) {
+        updated.personalKind = kind(of: original)
+        updated.personalKindResolved = true
     }
     public static func quickActivities(_ journal: Journal) -> [Activity] {
         journal.activities.filter { !$0.archived && !isRest($0, journal: journal) && recordingMode(of: $0).usesReminders }

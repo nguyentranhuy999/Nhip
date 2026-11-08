@@ -27,8 +27,12 @@ func XCTAssertThrowsError<T>(_ operation: @autoclosure () throws -> T, file: Sta
         let personal = PersonalTrackingTests()
         let modes = RecordingModeTests()
         let priority = PriorityTests()
+        let appearance = ActivityAppearanceTests()
         let completion = GoalCompletionTests()
         let cases: [(String, () throws -> Void)] = [
+            ("ordinary activity keeps its role when changing personal icons", appearance.testOrdinaryActivityStaysOrdinaryWhenChoosingPersonalIcons),
+            ("personal roles survive cosmetic edits", appearance.testPersonalRolesSurviveChoosingUnrelatedIconsAndNames),
+            ("explicit ordinary role persists and legacy inference remains", appearance.testExplicitOrdinaryRolePersistsAndLegacyInferenceStillWorks),
             ("daily priority totals include the whole previous day", priority.testDailyTotalsIncludeWholePreviousDay),
             ("daily priority totals respect midnight and DST", priority.testDailyTotalsClipMidnightAndRespectDST),
             ("daily priority totals follow chosen date and empty selection", priority.testDailyTotalsFollowSelectedDateAndEmptySelection),

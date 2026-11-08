@@ -2,6 +2,12 @@
 
 Phiên bản đặc tả: 1.1 · Ngày: 07/11/2026 · Ghi nhận ngủ/thức, mục tiêu đúng giờ và tự lưu Nghỉ ngơi.
 
+Từ 1.13.0, thay lưới 12 biểu tượng trong Sửa hoạt động bằng thư viện 148 biểu tượng macOS có nhãn tiếng Việt và từ khóa. Bộ lọc gồm Tất cả và sáu nhóm Học & công việc, Sức khỏe, Sinh hoạt, Giải trí, Di chuyển, Khác. Tìm kiếm kết hợp nhóm, hỗ trợ chữ hoa/thường, tiếng Việt có dấu/không dấu (cả đ/d), từ khóa tiếng Anh và tên biểu tượng. Chỉ hiện biểu tượng hệ điều hành hỗ trợ, không cần mạng hay tải tài nguyên ngoài.
+
+Bộ chọn có xem trước tên/icon hiện tại, số kết quả, lưới tám cột cuộn trong khung cố định, viền/màu nhận diện mục đang chọn, nút xóa tìm kiếm và trạng thái không tìm thấy. Giữ các icon đã lưu ngoài thư viện nếu người dùng chưa đổi; Hủy không lưu, Lưu cập nhật cùng ID hoạt động. Sheet mở rộng để có chỗ tìm/chọn và không tràn màn hình.
+
+Đổi tên/icon không được đổi vai trò ghi nhận: thêm Activity.personalKindResolved tùy chọn để phân biệt nil đã xác định (hoạt động thông thường) với dữ liệu legacy cần suy vai trò. Khi lưu Sửa hoạt động, chốt vai trò của bản gốc trước khi nhận biểu tượng mới; nhờ đó chọn hình cà phê/nhà/chạy bộ cho một mục công việc không tự chuyển thành Nghỉ ngơi/sinh hoạt/thể thao. Vai trò ngủ/thể thao/sinh hoạt đã có vẫn giữ khi đổi sang icon khác. Tương thích JSON/SQLite cũ và sao lưu.
+
 Từ 1.12.4, gộp hai phần so sánh ở Tuần/Tháng/Năm thành một phần theo bố cục so sánh cũ phía trên. Chỉ dùng Reports.priorityComparison: tăng/giảm/bằng kỳ trước, % chênh lệch, kỳ đối chiếu và cùng phần thời gian đã trôi qua, tổng giờ hai kỳ, trung bình/ngày lấy giờ ưu tiên chia dayCount của từng khoảng. Bỏ khối riêng có tiêu đề sao, danh sách tên và hai cột lớn. Không còn phép so sánh tổng tất cả hoạt động/bộ lọc biểu đồ. Danh sách sao trống hiện nút chọn trong Cài đặt, không tự chuyển sang cộng toàn bộ; kỳ trước 0 không chia tính %. Giữ biểu đồ, heatmap, biểu đồ trung bình năm theo bộ lọc và Card ưu tiên Ngày hiện có.
 
 Từ 1.12.3, ô ưu tiên của trang Ngày dùng tiêu đề Tổng thời gian ưu tiên, bỏ dòng liệt kê tên hoạt động, thay nhãn ngày cụ thể bằng Hôm nay/Hôm qua. Dòng so sánh dùng Nhiều hơn/Ít hơn/Bằng hôm qua. Giữ nguyên hai khoảng ngày theo bộ chọn ngày và toàn bộ cách tính giờ/tỷ lệ/chênh lệch; phần so sánh tuần/tháng/năm không đổi.
