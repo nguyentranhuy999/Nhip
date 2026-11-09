@@ -114,3 +114,11 @@ open -n dist/Nhip.app --args --demo
 - Một số sự kiện khóa màn hình dựa trên thông báo phiên macOS; cần kiểm tra trên máy thật khi cập nhật hệ điều hành.
 
 Đặc tả gốc: [SPEC.md](SPEC.md).
+
+## Giấy phép
+
+Mã nguồn, tài liệu và tài nguyên do dự án tự tạo được phát hành theo [MIT License](LICENSE). Bạn có thể sử dụng, chỉnh sửa và phân phối, kể cả cho mục đích thương mại, với điều kiện giữ thông báo bản quyền và giấy phép. Phần mềm được cung cấp không kèm bảo hành.
+
+Copyright (c) 2026 nguyentranhuy999.
+
+Các thành phần của bên thứ ba giữ điều khoản riêng; xem [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
