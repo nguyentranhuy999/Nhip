@@ -4,7 +4,7 @@ import NhipCore
 final class DashboardSelectionTests {
     private let base = Date(timeIntervalSince1970: 1_762_430_400)
     func testDefaultsChooseThreePrioritiesAndPrepareOnlyOnce() throws {
-        var j = Journal()
+        var j = legacyJournal()
         for index in [1, 4, 6, 7] { j.activities[index].isPriority = true }
         let expected = [j.activities[1].id, j.activities[4].id, j.activities[6].id]
         let original = j
@@ -19,17 +19,17 @@ final class DashboardSelectionTests {
         try Engine.validate(j)
     }
     func testDefaultsFillToThreeAndExcludeArchivedOnlyWhenInitializing() {
-        var j = Journal(); j.activities[0].archived = true; j.activities[4].isPriority = true
+        var j = legacyJournal(); j.activities[0].archived = true; j.activities[4].isPriority = true
         let ids = DashboardSelection.defaultIDs(j)
         XCTAssertEqual(ids, [j.activities[4].id, j.activities[1].id, j.activities[2].id])
         DashboardSelection.prepare(&j)
         j.activities[4].archived = true; DashboardSelection.prepare(&j)
         XCTAssertEqual(DashboardSelection.selectedIDs(for: .day, journal: j), ids)
-        var single = Journal(); single.activities = [single.activities[0]]
+        var single = legacyJournal(); single.activities = [single.activities[0]]
         XCTAssertEqual(DashboardSelection.defaultIDs(single), [single.activities[0].id])
     }
     func testEachPageAllowsZeroToSixAndKeepsOtherPagesIndependent() throws {
-        var j = Journal(); DashboardSelection.prepare(&j)
+        var j = legacyJournal(); DashboardSelection.prepare(&j)
         let original = j.preferences.dashboardActivities
         let six = Array(j.activities.prefix(6).map(\.id)).reversed().map { $0 }
         try DashboardSelection.setSelected(six, for: .month, journal: &j)
@@ -44,7 +44,7 @@ final class DashboardSelectionTests {
         try Engine.validate(j)
     }
     func testSeventhDuplicateAndUnknownActivitiesAreRejectedAtomically() throws {
-        var j = Journal(); DashboardSelection.prepare(&j)
+        var j = legacyJournal(); DashboardSelection.prepare(&j)
         let id = j.activities[0].id
         for invalid in [Array(j.activities.prefix(7).map(\.id)), [id, id], [UUID()]] {
             let before = j
@@ -57,7 +57,7 @@ final class DashboardSelectionTests {
         XCTAssertThrowsError(try Engine.validate(j))
     }
     func testSelectedCardsFollowIDsOrderAndLiveMetadataAcrossAllPages() throws {
-        var j = Journal(); let a = j.activities[0].id, b = j.activities[1].id
+        var j = legacyJournal(); let a = j.activities[0].id, b = j.activities[1].id
         try Engine.record(&j, entry: Entry(start: base, end: base.addingTimeInterval(600), activityID: a))
         try Engine.record(&j, entry: Entry(start: base.addingTimeInterval(600), end: base.addingTimeInterval(900), activityID: b))
         DashboardSelection.prepare(&j)
@@ -79,7 +79,7 @@ final class DashboardSelectionTests {
         XCTAssertTrue(Reports.dashboardMetrics(j, range: DateInterval(start: base.addingTimeInterval(86400), duration: 3600), page: .day)[1].activity.archived)
     }
     func testDashboardSelectionDoesNotAffectPriorityComparisonsOrFullReport() throws {
-        var j = Journal(); j.activities[0].isPriority = true
+        var j = legacyJournal(); j.activities[0].isPriority = true
         try Engine.record(&j, entry: Entry(start: base, end: base.addingTimeInterval(600), activityID: j.activities[0].id))
         try Engine.record(&j, entry: Entry(start: base.addingTimeInterval(600), end: base.addingTimeInterval(900), activityID: j.activities[1].id))
         let range = Reports.allTimeRange(j)
@@ -93,7 +93,7 @@ final class DashboardSelectionTests {
         XCTAssertTrue(j.activities[0].isPriority == true); XCTAssertTrue(j.activities[1].isPriority != true)
     }
     func testLegacyPersistenceEmptySelectionsAndReset() throws {
-        var j = Journal()
+        var j = legacyJournal()
         let legacy = try JSONDecoder().decode(Journal.self, from: JSONEncoder().encode(j))
         XCTAssertNil(legacy.preferences.dashboardActivities)
         XCTAssertEqual(DashboardSelection.selectedIDs(for: .day, journal: legacy).count, 3)

@@ -4,7 +4,7 @@ import NhipCore
 final class ActivityAppearanceTests {
     func testOrdinaryActivityStaysOrdinaryWhenChoosingPersonalIcons() throws {
         for symbol in ["figure.run", "house.fill", "cup.and.saucer.fill"] {
-            var j = Journal(); let original = j.activities[0]
+            var j = legacyJournal(); let original = j.activities[0]
             let date = Date(timeIntervalSince1970: 1_762_484_400)
             try GoalReports.saveDailyGoal(&j, activityID: original.id, minutes: 60, at: date)
             try Engine.record(&j, entry: Entry(start: date, end: date.addingTimeInterval(300), activityID: original.id))
@@ -23,7 +23,7 @@ final class ActivityAppearanceTests {
         }
     }
     func testPersonalRolesSurviveChoosingUnrelatedIconsAndNames() throws {
-        var j = Journal()
+        var j = legacyJournal()
         for index in [2, 5, 6] {
             let original = j.activities[index], role = PersonalTracking.kind(of: j.activities[index])
             var changed = original; changed.name = "Tên mới \(index)"; changed.symbol = "book.fill"
@@ -38,7 +38,7 @@ final class ActivityAppearanceTests {
         try Engine.validate(j)
     }
     func testExplicitOrdinaryRolePersistsAndLegacyInferenceStillWorks() throws {
-        var j = Journal(); let original = j.activities[0]
+        var j = legacyJournal(); let original = j.activities[0]
         var changed = original; changed.symbol = "cup.and.saucer.fill"
         PersonalTracking.preserveRole(of: original, in: &changed); j.activities[0] = changed
         let decoded = try JSONDecoder().decode(Journal.self, from: JSONEncoder().encode(j))
@@ -49,6 +49,6 @@ final class ActivityAppearanceTests {
         try repository.save(j); XCTAssertEqual(try repository.load(), j)
         let legacy = Activity(name: "Chạy", color: "6366F1", symbol: "figure.run")
         XCTAssertEqual(PersonalTracking.kind(of: legacy), .exercise)
-        XCTAssertEqual(PersonalTracking.quickActivities(Journal()).count, 5)
+        XCTAssertEqual(PersonalTracking.quickActivities(legacyJournal()).count, 5)
     }
 }

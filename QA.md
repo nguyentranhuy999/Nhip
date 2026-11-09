@@ -1,5 +1,13 @@
-# Kiểm tra bản 1.0–1.17.0
+# Kiểm tra bản 1.0–1.18.0
 
+
+## Cập nhật 1.18.0 — bộ mặc định mới theo cấu hình đã xác nhận
+
+- Activity.defaults chứa 9 mục và metadata/chế độ/ưu tiên như cấu hình người dùng đã chọn; UUID được tạo mới, không sao chép ID trong dữ liệu thật. Ngủ là rest riêng; Nghỉ ngơi thông thường khóa nil role. Sound mặc định bật, dashboard mặc định ba ưu tiên đầu. Giờ ngủ và các cấu hình nền còn lại vốn đã khớp giữ nguyên.
+- Icon mặc định của bốn mục điều hướng cập nhật theo lựa chọn hiện tại, có fallback icon cũ qua kiểm tra NSImage trên hệ điều hành khác.
+- Không thêm migration ghi đè cài đặt người dùng. Bộ mặc định áp dụng với Journal mới/reset; dữ liệu cũ decode/sao lưu giữ nguyên. Không chứa tên người dùng, nhật ký, mục tiêu cá nhân hoặc phiên đang chạy.
+- **177/177 checks đạt**. Bảy kiểm tra preset mới: metadata/UUID và không có dữ liệu cá nhân; sound/giờ ngủ/menu; lựa chọn dashboard; các mode và Ngủ/Nghỉ ngơi riêng; ghi nhanh/thủ công/ngủ và thống kê; reset sạch với ID mới; giữ dữ liệu cũ và round trip preset JSON/SQLite.
+- 170 hồi quy trước dùng fixture dữ liệu lịch sử rõ ràng trong LegacyFixtures, tiếp tục kiểm tra tương thích với danh mục 8 mục và cấu hình cũ. Kiểm tra reset cờ ưu tiên được cập nhật theo preset mới (5 mục), không còn kỳ vọng xóa hết sao.
 
 ## Cập nhật 1.17.0 — chọn tối đa 6 hoạt động riêng cho mỗi dashboard
 

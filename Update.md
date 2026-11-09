@@ -4,6 +4,15 @@ Các thay đổi được sắp xếp từ phiên bản mới nhất đến cũ 
 
 Hướng dẫn sử dụng hiện tại nằm trong [README.md](README.md). Chi tiết quy tắc hoạt động và kiểm tra kỹ thuật xem [SPEC.md](SPEC.md) và [QA.md](QA.md).
 
+## 1.18.0 — Bộ mặc định mới theo cấu hình hiện tại
+
+- Đặt sẵn 9 hoạt động: Học tập, Nghiên cứu, Thể thao, Giải trí, Công việc, Sinh hoạt cá nhân, Ngủ, Khác và Nghỉ ngơi, cùng icon và màu đã chọn.
+- Học tập/Nghiên cứu/Giải trí/Công việc/Khác/Nghỉ ngơi dùng Cả hai; Thể thao/Sinh hoạt cá nhân tự ghi nhận; Ngủ giữ vai trò ghi giấc ngủ riêng. Hoạt động Nghỉ ngơi thường không bị nhận nhầm thành Ngủ.
+- Đặt nhóm ưu tiên ban đầu gồm Học tập, Nghiên cứu, Thể thao, Công việc và Ngủ. Các dashboard bắt đầu với ba mục Học tập, Nghiên cứu, Thể thao.
+- Bật âm báo mặc định và cập nhật icon mặc định cho Tuần, Tháng, Năm, Hoạt động; có icon dự phòng cho macOS chưa hỗ trợ biểu tượng mới.
+- Bộ cấu hình áp dụng khi cài mới hoặc đặt lại dữ liệu; giữ nguyên cấu hình và lịch sử đang lưu. Không đưa tên cá nhân, lịch sử hoặc phiên đang chạy vào bộ mặc định.
+- Bộ kiểm tra đạt 177/177 trường hợp, gồm kiểm tra bộ mặc định mới và tương thích dữ liệu cũ.
+
 ## 1.17.0 — Chọn hoạt động cho từng dashboard
 
 - Thêm **Cài đặt → Dashboard** để chọn riêng hoạt động cho Ngày, Tuần, Tháng, Năm và Tổng kết; mỗi trang tối đa 6 hoạt động.

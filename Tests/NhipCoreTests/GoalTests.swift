@@ -5,7 +5,7 @@ final class GoalTests {
     let base = Date(timeIntervalSince1970: 1_735_689_600)
     func at(_ minute: Double) -> Date { base.addingTimeInterval(minute * 60) }
     func testLegacyWeeklyGoalDecodesWithoutPeriod() throws {
-        var j = Journal()
+        var j = legacyJournal()
         j.goals = [Goal(activityID: j.activities[0].id, direction: "increase", minutes: 180, effectiveFrom: base)]
         var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(j)) as! [String: Any]
         var goals = object["goals"] as! [[String: Any]]
@@ -18,7 +18,7 @@ final class GoalTests {
         XCTAssertEqual(GoalReports.dailyGoals(decoded, at: base).count, 0)
     }
     func testDailySaveUpsertsWithoutReplacingWeeklyGoals() throws {
-        var j = Journal()
+        var j = legacyJournal()
         let id = j.activities[0].id
         j.goals = [Goal(activityID: id, direction: "increase", minutes: 180, effectiveFrom: base)]
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: base)
@@ -31,7 +31,7 @@ final class GoalTests {
         try Engine.validate(j)
     }
     func testDailyCheckCompletesOnlyAtThresholdForChosenActivity() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: base)
         let goal = j.goals[0]
         try Engine.record(&j, entry: Entry(start: base, end: at(15), activityID: id))
@@ -44,7 +44,7 @@ final class GoalTests {
         XCTAssertTrue(progress.isComplete)
     }
     func testDailyCheckResetsNextDayWithoutDeletingActivity() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: base)
         try Engine.record(&j, entry: Entry(start: base, end: at(30), activityID: id))
         let goal = j.goals[0], nextDay = j.preferences.calendar.date(byAdding: .day, value: 1, to: base)!
@@ -55,7 +55,7 @@ final class GoalTests {
         XCTAssertEqual(Reports.summarize(j, range: Reports.allTimeRange(j)).total, 1800)
     }
     func testDailyProgressClipsMidnightInReportTimezone() throws {
-        var j = Journal(); let id = j.activities[0].id, c = j.preferences.calendar
+        var j = legacyJournal(); let id = j.activities[0].id, c = j.preferences.calendar
         let midnight = c.startOfDay(for: base), yesterday = c.date(byAdding: .day, value: -1, to: midnight)!
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: yesterday)
         try Engine.record(&j, entry: Entry(start: midnight.addingTimeInterval(-900), end: midnight.addingTimeInterval(900), activityID: id))
@@ -67,7 +67,7 @@ final class GoalTests {
         XCTAssertTrue(GoalReports.progress(j.goals[0], journal: j, at: midnight, now: base).isComplete)
     }
     func testEditingActivityAutomaticallyUnchecksGoal() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: base)
         try Engine.record(&j, entry: Entry(start: base, end: at(30), activityID: id))
         XCTAssertTrue(GoalReports.progress(j.goals[0], journal: j, at: base, now: at(30)).isComplete)
@@ -77,7 +77,7 @@ final class GoalTests {
         XCTAssertFalse(GoalReports.progress(j.goals[0], journal: j, at: base, now: at(30)).isComplete)
     }
     func testDeleteAndUndoPreserveActivityAndOtherGoals() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         let weekly = Goal(activityID: id, direction: "increase", minutes: 180, effectiveFrom: base)
         j.goals = [weekly]
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 60, at: base)
@@ -90,7 +90,7 @@ final class GoalTests {
         XCTAssertEqual(j.goals.count, 2); XCTAssertEqual(j.entries, entries)
     }
     func testDeleteWeeklyGoalDoesNotResurfaceOlderRule() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         let older = Goal(activityID: id, direction: "increase", minutes: 60, effectiveFrom: at(-1440))
         let current = Goal(activityID: id, direction: "increase", minutes: 180, effectiveFrom: base)
         j.goals = [older, current]
@@ -102,7 +102,7 @@ final class GoalTests {
         XCTAssertEqual(GoalReports.weeklyGoals(j, at: base).first?.id, current.id)
     }
     func testInvalidDailyTargetsAreRejectedAtomically() throws {
-        var j = Journal(); let id = j.activities[0].id, original = j
+        var j = legacyJournal(); let id = j.activities[0].id, original = j
         XCTAssertThrowsError(try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 0, at: base))
         XCTAssertThrowsError(try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 1441, at: base))
         XCTAssertThrowsError(try GoalReports.saveDailyGoal(&j, activityID: UUID(), minutes: 60, at: base))
@@ -113,7 +113,7 @@ final class GoalTests {
         XCTAssertThrowsError(try Engine.validate(j))
     }
     func testDailyAndWeeklyGoalsRoundTripSQLite() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         j.goals = [Goal(activityID: id, direction: "increase", minutes: 180, effectiveFrom: base)]
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: base)
         try Engine.record(&j, entry: Entry(start: base, end: at(30), activityID: id))

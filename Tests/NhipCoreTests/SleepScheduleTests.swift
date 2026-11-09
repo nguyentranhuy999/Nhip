@@ -9,7 +9,7 @@ final class SleepScheduleTests {
         s.napSleep = 12 * 60 + 10; s.napWake = 13 * 60 + 5; return s
     }
     func testLegacyStateAndSessionsUseOriginalDefaultTimes() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try SleepTracking.start(&j, kind: .nap, at: at("2025-11-07T12:25:00"))
         try SleepTracking.wake(&j, at: at("2025-11-07T13:25:00"))
         var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(j)) as! [String: Any]
@@ -28,7 +28,7 @@ final class SleepScheduleTests {
         try Engine.validate(decoded)
     }
     func testSchedulePersistsWithoutChangingHistoryAndSurvivesDisable() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try GoalReports.saveDailyGoal(&j, activityID: j.activities[0].id, minutes: 60, at: at("2025-11-07T10:00:00"))
         let original = j
         try SleepPlan.setSchedule(custom, journal: &j)
@@ -47,7 +47,7 @@ final class SleepScheduleTests {
         try SleepPlan.setSchedule(custom, journal: &j); j.reset(); XCTAssertEqual(SleepPlan.schedule(j), SleepSchedule())
     }
     func testInvalidTimesAndOrderingAreRejectedAtomically() throws {
-        var j = Journal(); var invalid: [SleepSchedule] = []
+        var j = legacyJournal(); var invalid: [SleepSchedule] = []
         var s = custom; s.napSleep = -1; invalid.append(s)
         s = custom; s.nightSleep = 1440; invalid.append(s)
         s = custom; s.napWake = s.napSleep; invalid.append(s)
@@ -65,7 +65,7 @@ final class SleepScheduleTests {
         XCTAssertThrowsError(try Engine.validate(j))
     }
     func testCustomNativeTriggersAndNextReminderFollowAllFourTimes() throws {
-        let c = Journal().preferences.calendar, schedule = custom
+        let c = legacyJournal().preferences.calendar, schedule = custom
         try schedule.validate()
         for reminder in SleepReminder.allCases {
             let trigger = UNCalendarNotificationTrigger(dateMatching: reminder.dateComponents(calendar: c, schedule: schedule), repeats: true)
@@ -86,7 +86,7 @@ final class SleepScheduleTests {
     }
     func testBeforeMidnightBedtimeAndWakeUseCustomDeadlines() throws {
         for (bed, wake, complete) in [("23:20:59", "06:45:59", true), ("23:21:00", "06:46:00", false)] {
-            var j = Journal(); try SleepPlan.setSchedule(custom, journal: &j)
+            var j = legacyJournal(); try SleepPlan.setSchedule(custom, journal: &j)
             try SleepTracking.start(&j, kind: .night, at: at("2025-11-07T" + bed))
             try SleepTracking.wake(&j, at: at("2025-11-08T" + wake))
             XCTAssertEqual(j.sleepHistory?.sessions[0].goalDay, "2025-11-07")
@@ -97,7 +97,7 @@ final class SleepScheduleTests {
         }
     }
     func testAfterMidnightBedtimeBelongsToPreviousEveningAcrossYearBoundary() throws {
-        var j = Journal(); var schedule = custom; schedule.nightSleep = 60; schedule.morningWake = 8 * 60
+        var j = legacyJournal(); var schedule = custom; schedule.nightSleep = 60; schedule.morningWake = 8 * 60
         try SleepPlan.setSchedule(schedule, journal: &j)
         try SleepTracking.start(&j, kind: .night, at: at("2025-01-01T00:50:00"))
         try SleepTracking.wake(&j, at: at("2025-01-01T07:50:00"))
@@ -109,7 +109,7 @@ final class SleepScheduleTests {
         XCTAssertEqual(j.sleepHistory?.sessions[0].deadline(for: .nightSleep), at("2025-01-01T01:00:00"))
     }
     func testChangingScheduleKeepsActiveAndHistoricalGoalResults() throws {
-        var j = Journal(); var first = custom; first.napSleep = 12 * 60 + 15; first.napWake = 13 * 60 + 15
+        var j = legacyJournal(); var first = custom; first.napSleep = 12 * 60 + 15; first.napWake = 13 * 60 + 15
         try SleepPlan.setSchedule(first, journal: &j)
         try SleepTracking.start(&j, kind: .nap, at: at("2025-11-07T12:14:00"))
         var second = custom; second.napSleep = 12 * 60; second.napWake = 13 * 60
@@ -128,7 +128,7 @@ final class SleepScheduleTests {
         XCTAssertEqual(j.sleepHistory?.sessions[0].schedule, first)
     }
     func testNewSessionsUseChangedScheduleAndPersistTheirSnapshot() throws {
-        var j = Journal(); try SleepPlan.setSchedule(custom, journal: &j)
+        var j = legacyJournal(); try SleepPlan.setSchedule(custom, journal: &j)
         try SleepTracking.start(&j, kind: .nap, at: at("2025-11-07T12:11:00"))
         try SleepTracking.wake(&j, at: at("2025-11-07T13:04:00"))
         XCTAssertFalse(SleepPlan.isComplete(.napSleep, journal: j, on: at("2025-11-07T14:00:00")))
@@ -138,7 +138,7 @@ final class SleepScheduleTests {
         XCTAssertEqual(SleepTracking.deadlineTimeLabel(for: .napSleep, journal: j, on: at("2025-11-08T14:00:00")), "12:10")
     }
     func testCustomTimesRespectDSTLocalClockAndActualRestDuration() throws {
-        var j = Journal(); j.preferences.timezone = "America/New_York"
+        var j = legacyJournal(); j.preferences.timezone = "America/New_York"
         var schedule = custom; schedule.nightSleep = 23 * 60 + 15; schedule.morningWake = 7 * 60 + 45
         try SleepPlan.setSchedule(schedule, journal: &j)
         let start = ISO8601DateFormatter().date(from: "2026-03-08T04:10:00Z")!

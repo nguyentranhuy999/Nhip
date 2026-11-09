@@ -3,7 +3,7 @@ import NhipCore
 
 final class GoalCompletionTests {
     func at(_ value: String) -> Date { ISO8601DateFormatter().date(from: value + "+07:00")! }
-    func journal() -> Journal { var j = Journal(); SleepPlan.setEnabled(false, journal: &j); return j }
+    func journal() -> Journal { var j = legacyJournal(); SleepPlan.setEnabled(false, journal: &j); return j }
     func entry(_ j: inout Journal, activity: Int = 0, date: String, minutes: Int) throws {
         let start = at(date)
         try Engine.record(&j, entry: Entry(start: start, end: start.addingTimeInterval(Double(minutes * 60)), activityID: j.activities[activity].id))
@@ -55,11 +55,11 @@ final class GoalCompletionTests {
         let s = GoalReports.completionSummary(j, now: now)
         XCTAssertEqual(s.daily.total, 0); XCTAssertNil(s.daily.rate)
         XCTAssertEqual(s.weekly.total, 0); XCTAssertNil(s.weekly.rate)
-        let fresh = GoalReports.completionSummary(Journal(), now: now)
+        let fresh = GoalReports.completionSummary(legacyJournal(), now: now)
         XCTAssertEqual(fresh.daily.total, 4); XCTAssertEqual(fresh.daily.completed, 0); XCTAssertEqual(fresh.daily.rate!, 0)
     }
     func testSleepGoalsUseSleepHistoryAndActualDeadlines() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try entry(&j, date: "2020-01-01T08:00:00", minutes: 60)
         try SleepTracking.start(&j, kind: .night, at: at("2025-11-03T23:00:00"))
         try SleepTracking.wake(&j, at: at("2025-11-04T07:00:59"))
@@ -71,7 +71,7 @@ final class GoalCompletionTests {
         XCTAssertEqual(s.daily.rate!, 3.0 / 8, accuracy: 0.00001)
     }
     func testLegacySleepGoalsAndDisabledPlan() throws {
-        var j = Journal()
+        var j = legacyJournal()
         SleepPlan.setComplete(true, reminder: .napSleep, journal: &j, on: at("2025-12-31T14:00:00"))
         let s = GoalReports.completionSummary(j, now: at("2026-01-01T00:00:00"))
         XCTAssertEqual(s.daily.completed, 1); XCTAssertEqual(s.daily.total, 8)
@@ -116,7 +116,7 @@ final class GoalCompletionTests {
         print(String(format: "Goal completion: 105120 entries, %.3fs", elapsed))
     }
     func testSleepBaselinePersistsAndCountsDaysWithoutMarkers() throws {
-        var j = Journal(); let original = j
+        var j = legacyJournal(); let original = j
         SleepPlan.prepareStatistics(journal: &j, on: at("2025-11-03T12:00:00"))
         XCTAssertEqual(j.sleepReminders?.statisticsStartDay, "2025-11-03")
         let decoded = try JSONDecoder().decode(Journal.self, from: JSONEncoder().encode(j))
@@ -128,12 +128,12 @@ final class GoalCompletionTests {
         XCTAssertEqual(j.preferences, original.preferences)
     }
     func testInvalidSleepStatisticsBaselineRejected() throws {
-        var j = Journal(); j.sleepReminders = SleepReminderState()
+        var j = legacyJournal(); j.sleepReminders = SleepReminderState()
         j.sleepReminders?.statisticsStartDay = "2025-02-30"
         XCTAssertThrowsError(try Engine.validate(j))
     }
     func testResetClearsOldTasksAndStartsWithFourToday() throws {
-        var j = Journal()
+        var j = legacyJournal()
         SleepPlan.prepareStatistics(journal: &j, on: at("2025-11-01T12:00:00"))
         try GoalReports.saveDailyGoal(&j, activityID: j.activities[0].id, minutes: 30, at: at("2025-11-01T12:00:00"))
         try GoalReports.saveWeeklyGoal(&j, activityID: j.activities[0].id, minutes: 60, at: at("2025-11-01T12:00:00"))
@@ -147,7 +147,7 @@ final class GoalCompletionTests {
         XCTAssertNil(j.sleepHistory); try Engine.validate(j)
     }
     func testPostMidnightSleepCannotMoveResetBaselineBack() throws {
-        var j = Journal(); j.reset(at: at("2025-11-08T00:05:00"))
+        var j = legacyJournal(); j.reset(at: at("2025-11-08T00:05:00"))
         try SleepTracking.start(&j, kind: .night, at: at("2025-11-08T00:10:00"))
         XCTAssertEqual(j.sleepHistory?.active?.goalDay, "2025-11-07")
         SleepPlan.prepareStatistics(journal: &j, on: at("2025-11-08T00:10:00"))
@@ -157,7 +157,7 @@ final class GoalCompletionTests {
         XCTAssertTrue(j.sleepHistory?.active != nil)
     }
     func testResetBaselineSurvivesReopenAndWake() throws {
-        var j = Journal(); j.reset(at: at("2025-11-08T00:05:00"))
+        var j = legacyJournal(); j.reset(at: at("2025-11-08T00:05:00"))
         try SleepTracking.start(&j, kind: .night, at: at("2025-11-08T00:10:00"))
         j = try JSONDecoder().decode(Journal.self, from: JSONEncoder().encode(j))
         SleepPlan.prepareStatistics(journal: &j, on: at("2025-11-08T06:30:00"))
@@ -169,7 +169,7 @@ final class GoalCompletionTests {
         XCTAssertEqual(next.daily.total, 8); XCTAssertEqual(next.daily.completed, 1)
     }
     func testExplicitBaselineExcludesEarlierLegacySleepGoals() throws {
-        var j = Journal()
+        var j = legacyJournal()
         SleepPlan.setComplete(true, reminder: .napSleep, journal: &j, on: at("2025-11-07T12:00:00"))
         j.sleepReminders?.statisticsStartDay = "2025-11-08"
         SleepPlan.prepareStatistics(journal: &j, on: at("2025-11-08T12:00:00"))

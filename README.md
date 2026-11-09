@@ -17,6 +17,18 @@ Dữ liệu được lưu trên máy. Bạn không cần tạo tài khoản hay 
 - **Cá nhân hóa:** đổi tên, màu, icon hoạt động; đổi tên và icon các mục trên menu.
 - **Sao lưu và xuất dữ liệu:** sao lưu để chuyển máy, khôi phục lịch sử hoặc xuất bảng dữ liệu CSV.
 
+## Bộ hoạt động có sẵn
+
+Nhịp bắt đầu với **Học tập, Nghiên cứu, Thể thao, Giải trí, Công việc, Sinh hoạt cá nhân, Ngủ, Khác và Nghỉ ngơi**.
+
+| Hoạt động | Cách ghi nhận ban đầu |
+| --- | --- |
+| Học tập, Nghiên cứu, Giải trí, Công việc, Khác, Nghỉ ngơi | Cả nhắc định kỳ và Bắt đầu/Kết thúc. |
+| Thể thao, Sinh hoạt cá nhân | Tự bấm Bắt đầu/Kết thúc. |
+| Ngủ | Dùng các nút Ngủ/Thức dậy trong phần ghi nhận giấc ngủ. |
+
+Dashboard ban đầu hiển thị **Học tập, Nghiên cứu và Thể thao**. Nhóm ưu tiên để so sánh gồm **Học tập, Nghiên cứu, Thể thao, Công việc và Ngủ**. Âm báo và âm xác nhận được bật sẵn. Bạn có thể chỉnh lại các lựa chọn này trong Cài đặt.
+
 ## Cài đặt và bắt đầu
 
 Nhịp yêu cầu **macOS 13 trở lên** và được phát triển, kiểm tra trên Mac dùng chip Apple Silicon, như M1.

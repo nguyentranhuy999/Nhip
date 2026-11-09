@@ -4,7 +4,7 @@ import NhipCore
 final class ActivityCatalogTests {
     private let base = Date(timeIntervalSince1970: 1_762_430_400)
     func testDuplicateNamesAndWhitespaceAreRejectedAtomically() throws {
-        var j = Journal()
+        var j = legacyJournal()
         for name in ["Học", " HỌC ", "hoc", "Nghỉ ngơi", "NGHI  NGOI", "nghi\n\tngoi", "", " \t\n"] {
             let before = j
             XCTAssertThrowsError(try ActivityCatalog.add(&j, name: name))
@@ -18,7 +18,7 @@ final class ActivityCatalogTests {
         XCTAssertThrowsError(try ActivityCatalog.add(&j, name: "hoc")); XCTAssertEqual(j, archived)
     }
     func testRenamingRejectsConflictsButKeepsSelfAndHistory() throws {
-        var j = Journal(); let study = j.activities[0]
+        var j = legacyJournal(); let study = j.activities[0]
         try Engine.record(&j, entry: Entry(start: base, end: base.addingTimeInterval(300), activityID: study.id))
         try GoalReports.saveDailyGoal(&j, activityID: study.id, minutes: 60, at: base)
         var edited = study; edited.name = " nghiên  cứu "
@@ -34,7 +34,7 @@ final class ActivityCatalogTests {
         XCTAssertThrowsError(try ActivityCatalog.update(&j, activity: edited)); XCTAssertEqual(j, valid)
     }
     func testNewActivitiesNeverInferRolesFromNamesOrIcons() throws {
-        var j = Journal()
+        var j = legacyJournal()
         j.activities[2].name = "Vận động"; j.activities[5].name = "Chăm sóc"; j.activities[6].name = "Ngủ"
         for (name, symbol) in [("Nghỉ ngơi", "cup.and.saucer.fill"), ("Tập thể thao", "figure.run"), ("Sinh hoạt cá nhân", "house.fill")] {
             let id = try ActivityCatalog.add(&j, name: name)
@@ -53,7 +53,7 @@ final class ActivityCatalogTests {
         try Engine.validate(j)
     }
     func testSleepUsesRenamedRestRoleInsteadOfOrdinaryNamesake() throws {
-        var j = Journal(); let restID = j.activities[6].id
+        var j = legacyJournal(); let restID = j.activities[6].id
         j.activities[6].name = "Ngủ"
         let ordinary = try ActivityCatalog.add(&j, name: "Nghỉ ngơi")
         try SleepTracking.start(&j, kind: .nap, at: base)
@@ -64,7 +64,7 @@ final class ActivityCatalogTests {
         XCTAssertEqual(j.activities.count, 9)
     }
     func testSleepCreatesUniqueSpecialCategoryIfOnlyOrdinaryNamesakeExists() throws {
-        var j = Journal(); j.activities.remove(at: 6)
+        var j = legacyJournal(); j.activities.remove(at: 6)
         let ordinary = try ActivityCatalog.add(&j, name: "Nghỉ ngơi")
         try SleepTracking.start(&j, kind: .nap, at: base)
         try SleepTracking.wake(&j, at: base.addingTimeInterval(3600))
@@ -77,7 +77,7 @@ final class ActivityCatalogTests {
         try Engine.validate(j)
     }
     func testLegacyDuplicatesStillLoadWithoutDeletingOrMergingHistory() throws {
-        var j = Journal(); let duplicate = Activity(name: "HỌC", color: "6366F1")
+        var j = legacyJournal(); let duplicate = Activity(name: "HỌC", color: "6366F1")
         j.activities.append(duplicate)
         try Engine.record(&j, entry: Entry(start: base, end: base.addingTimeInterval(300), activityID: duplicate.id))
         try Engine.validate(j)

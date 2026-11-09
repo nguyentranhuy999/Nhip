@@ -3,7 +3,7 @@ import NhipCore
 
 final class CheckInSoundTests {
     func testLegacyJournalsEnableConfirmationWithoutChangingAlertSound() throws {
-        let original = Journal()
+        let original = legacyJournal()
         var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as! [String: Any]
         var preferences = object["preferences"] as! [String: Any]
         preferences.removeValue(forKey: "checkInSuccessSound"); object["preferences"] = preferences
@@ -14,7 +14,7 @@ final class CheckInSoundTests {
         try Engine.validate(journal)
     }
     func testMutedConfirmationPersistsAndDoesNotChangeOtherPreferences() throws {
-        var journal = Journal(); journal.preferences.sound = true
+        var journal = legacyJournal(); journal.preferences.sound = true
         InterfaceSection.summary.setSymbol("star.fill", in: &journal.preferences)
         let original = journal
         journal.preferences.checkInSuccessSound = false

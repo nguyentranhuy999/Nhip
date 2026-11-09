@@ -5,7 +5,7 @@ final class PersonalTrackingTests {
     let base = ISO8601DateFormatter().date(from: "2025-11-07T03:00:00Z")! // 10:00 Vietnam.
     func at(_ minutes: Double) -> Date { base.addingTimeInterval(minutes * 60) }
     func testQuickChoicesExcludePersonalCategoriesWithoutDeletingHistory() throws {
-        var j = Journal()
+        var j = legacyJournal()
         let sports = j.activities[2].id
         try Engine.record(&j, entry: Entry(start: base, end: at(30), activityID: sports))
         let original = j.entries
@@ -18,7 +18,7 @@ final class PersonalTrackingTests {
         XCTAssertEqual(Reports.summarize(j, range: DateInterval(start: base, end: at(30))).totals[sports], 1800)
     }
     func testLegacyCategoryMigrationIsIdempotentAndPreservesData() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try GoalReports.saveDailyGoal(&j, activityID: j.activities[2].id, minutes: 60, at: base)
         let goals = j.goals
         var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(j)) as! [String: Any]
@@ -36,7 +36,7 @@ final class PersonalTrackingTests {
         XCTAssertEqual(legacy.activities[6].personalKind, .rest)
     }
     func testExerciseCreatesOneEntryAndUpdatesDailyGoal() throws {
-        var j = Journal(); let id = j.activities[2].id
+        var j = legacyJournal(); let id = j.activities[2].id
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 60, at: base)
         let sessionID = try PersonalTracking.start(&j, kind: .exercise, at: base)
         XCTAssertTrue(j.isRecordingPersonalActivity); XCTAssertTrue(j.entries.isEmpty)
@@ -49,7 +49,7 @@ final class PersonalTrackingTests {
         try Engine.validate(j)
     }
     func testLateReturnCanEditBothTimesWithoutMovingTrackingClock() throws {
-        var j = Journal(); Engine.start(&j, at: at(-5))
+        var j = legacyJournal(); Engine.start(&j, at: at(-5))
         let id = try PersonalTracking.start(&j, kind: .personal, at: base)
         try PersonalTracking.finish(&j, kind: .personal, at: at(240))
         let entryID = j.entries[0].id, runtime = j.runtime
@@ -61,7 +61,7 @@ final class PersonalTrackingTests {
         XCTAssertEqual(j.runtime.segmentStart, at(240)); XCTAssertEqual(j.runtime.nextDue, at(245))
     }
     func testFinishCanUseActualPastTimesAndResumeOnlyOnReturn() throws {
-        var j = Journal(); Engine.start(&j, at: at(-5))
+        var j = legacyJournal(); Engine.start(&j, at: at(-5))
         try PersonalTracking.start(&j, kind: .exercise, at: base)
         try Engine.record(&j, entry: Entry(start: at(100), end: at(120), activityID: j.activities[0].id))
         try PersonalTracking.finish(&j, kind: .exercise, at: at(90), start: at(-10), resumeAt: at(240))
@@ -70,7 +70,7 @@ final class PersonalTrackingTests {
         XCTAssertEqual(j.runtime.segmentStart, at(240)); XCTAssertEqual(j.runtime.nextDue, at(245))
     }
     func testPersonalTimerStopsCheckInsAndRecoversAcrossClose() throws {
-        var j = Journal(); Engine.start(&j, at: at(-5))
+        var j = legacyJournal(); Engine.start(&j, at: at(-5))
         try PersonalTracking.start(&j, kind: .exercise, at: base)
         let intervals = j.intervals
         XCTAssertNil(j.runtime.nextDue)
@@ -83,29 +83,29 @@ final class PersonalTrackingTests {
         XCTAssertEqual(j.intervals, intervals)
     }
     func testManualPauseRemainsPausedAndTimedPauseDoesNotBackfill() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try PersonalTracking.start(&j, kind: .personal, at: base)
         try PersonalTracking.finish(&j, kind: .personal, at: at(90))
         XCTAssertFalse(j.runtime.enabled); XCTAssertNil(j.runtime.nextDue)
-        var timed = Journal(); Engine.start(&timed, at: at(-5)); Engine.pause(&timed, at: base, minutes: 30)
+        var timed = legacyJournal(); Engine.start(&timed, at: at(-5)); Engine.pause(&timed, at: base, minutes: 30)
         try PersonalTracking.start(&timed, kind: .personal, at: base)
         try PersonalTracking.finish(&timed, kind: .personal, at: at(60))
         XCTAssertNil(timed.runtime.pauseUntil); XCTAssertEqual(timed.runtime.segmentStart, at(60))
         XCTAssertEqual(timed.intervals.count, 1)
     }
     func testSleepAndPersonalSessionsCannotRunTogether() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try PersonalTracking.start(&j, kind: .exercise, at: base); let active = j
         XCTAssertThrowsError(try PersonalTracking.start(&j, kind: .personal, at: at(1)))
         XCTAssertThrowsError(try SleepTracking.start(&j, kind: .nap, at: at(2)))
         XCTAssertThrowsError(try PersonalTracking.finish(&j, kind: .personal, at: at(3)))
         XCTAssertEqual(j, active)
-        var sleeping = Journal(); try SleepTracking.start(&sleeping, kind: .nap, at: base); let before = sleeping
+        var sleeping = legacyJournal(); try SleepTracking.start(&sleeping, kind: .nap, at: base); let before = sleeping
         XCTAssertThrowsError(try PersonalTracking.start(&sleeping, kind: .exercise, at: at(1)))
         XCTAssertEqual(sleeping, before)
     }
     func testEditAndFinishConflictsAreAtomic() throws {
-        var j = Journal(); let id = try PersonalTracking.start(&j, kind: .exercise, at: base)
+        var j = legacyJournal(); let id = try PersonalTracking.start(&j, kind: .exercise, at: base)
         try PersonalTracking.finish(&j, kind: .exercise, at: at(60))
         try Engine.record(&j, entry: Entry(start: at(120), end: at(150), activityID: j.activities[0].id))
         let original = j
@@ -113,14 +113,14 @@ final class PersonalTrackingTests {
         XCTAssertThrowsError(try PersonalTracking.edit(&j, sessionID: id, start: at(70), end: at(60)))
         XCTAssertThrowsError(try PersonalTracking.edit(&j, sessionID: id, start: base, end: Date().addingTimeInterval(3600)))
         XCTAssertEqual(j, original)
-        var conflict = Journal(); try PersonalTracking.start(&conflict, kind: .personal, at: base)
+        var conflict = legacyJournal(); try PersonalTracking.start(&conflict, kind: .personal, at: base)
         try Engine.record(&conflict, entry: Entry(start: at(20), end: at(30), activityID: conflict.activities[0].id))
         let before = conflict
         XCTAssertThrowsError(try PersonalTracking.finish(&conflict, kind: .personal, at: at(60)))
         XCTAssertEqual(conflict, before)
     }
     func testDeleteOnlyOwnEntryAndCancelResumesRecording() throws {
-        var j = Journal()
+        var j = legacyJournal()
         let id = try PersonalTracking.start(&j, kind: .personal, at: base)
         try PersonalTracking.finish(&j, kind: .personal, at: at(60))
         try Engine.record(&j, entry: Entry(start: at(90), end: at(100), activityID: j.activities[0].id))
@@ -134,7 +134,7 @@ final class PersonalTrackingTests {
         XCTAssertEqual(j.entries, [manual])
     }
     func testRenamedArchivedCategoryStillUsesSameID() throws {
-        var j = Journal(); let categoryID = j.activities[2].id
+        var j = legacyJournal(); let categoryID = j.activities[2].id
         j.activities[2].name = "Chạy bộ"; j.activities[2].symbol = "heart.fill"; j.activities[2].archived = true
         try PersonalTracking.start(&j, kind: .exercise, at: base)
         try PersonalTracking.finish(&j, kind: .exercise, at: at(60))
@@ -142,7 +142,7 @@ final class PersonalTrackingTests {
         XCTAssertFalse(PersonalTracking.quickActivities(j).contains { $0.id == categoryID })
     }
     func testActiveAndCompletedSessionsPersistWithLegacyCompatibility() throws {
-        var j = Journal(); try PersonalTracking.start(&j, kind: .personal, at: base)
+        var j = legacyJournal(); try PersonalTracking.start(&j, kind: .personal, at: base)
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }
         let repo = try Repository(url: folder.appendingPathComponent("journal.sqlite"))
@@ -153,7 +153,7 @@ final class PersonalTrackingTests {
         XCTAssertEqual(decoded, loaded); try repo.save(loaded); XCTAssertEqual(try repo.load(), loaded)
     }
     func testOvernightActivitySplitsReportsAtMidnight() throws {
-        var j = Journal(); let c = j.preferences.calendar
+        var j = legacyJournal(); let c = j.preferences.calendar
         let midnight = c.date(byAdding: .day, value: 1, to: c.startOfDay(for: base))!
         try PersonalTracking.start(&j, kind: .exercise, at: midnight.addingTimeInterval(-1800))
         try PersonalTracking.finish(&j, kind: .exercise, at: midnight.addingTimeInterval(3600))
@@ -162,7 +162,7 @@ final class PersonalTrackingTests {
         XCTAssertEqual(Reports.summarize(j, range: c.dateInterval(of: .day, for: midnight)!).totals[id], 3600)
     }
     func testInvalidSessionDataAndRestTimerAreRejected() throws {
-        var j = Journal(); XCTAssertThrowsError(try PersonalTracking.start(&j, kind: .rest, at: base))
+        var j = legacyJournal(); XCTAssertThrowsError(try PersonalTracking.start(&j, kind: .rest, at: base))
         try PersonalTracking.start(&j, kind: .exercise, at: base)
         var duplicate = j.personalHistory!.sessions[0]; duplicate.id = UUID()
         j.personalHistory?.sessions.append(duplicate)

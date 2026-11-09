@@ -4,7 +4,7 @@ import NhipCore
 final class ActivityMetricTests {
     private func at(_ value: String) -> Date { ISO8601DateFormatter().date(from: value + "+07:00")! }
     func testRenamingAndAppearancePreserveTotalsAcrossEveryReportPeriod() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         try Engine.record(&j, entry: Entry(start: at("2025-12-31T23:58:00"), end: at("2026-01-01T00:03:00"), activityID: id, source: "checkin"))
         try Engine.record(&j, entry: Entry(start: at("2026-01-01T01:00:00"), end: at("2026-01-01T01:10:00"), activityID: id, source: "manual"))
         try Engine.record(&j, entry: Entry(start: at("2026-01-01T01:10:00"), end: at("2026-01-01T01:20:00"), activityID: j.activities[1].id))
@@ -27,7 +27,7 @@ final class ActivityMetricTests {
         XCTAssertEqual(j.entries, entries); XCTAssertEqual(j.goals, goals)
     }
     func testReusingOldNameDoesNotStealTotalsFromRenamedActivity() throws {
-        var j = Journal(); let original = j.activities[0].id
+        var j = legacyJournal(); let original = j.activities[0].id
         var study = j.activities[0]; study.name = "Học tập"; study.symbol = "graduationcap.fill"
         try ActivityCatalog.update(&j, activity: study)
         let added = try ActivityCatalog.add(&j, name: "Học")
@@ -42,7 +42,7 @@ final class ActivityMetricTests {
         XCTAssertEqual(Set(cards.map(\.id)).count, j.activities.count)
     }
     func testCardsFollowSettingsOrderAndRetainArchivedHistory() throws {
-        var j = Journal(); let ids = j.activities.map(\.id)
+        var j = legacyJournal(); let ids = j.activities.map(\.id)
         try Engine.record(&j, entry: Entry(start: at("2025-11-07T09:00:00"), end: at("2025-11-07T09:05:00"), activityID: ids[0]))
         j.activities[0].archived = true; j.activities[1].archived = true
         j.activities.swapAt(0, 2)
@@ -55,7 +55,7 @@ final class ActivityMetricTests {
         XCTAssertFalse(Reports.activityMetrics(j, range: later).contains { $0.id == ids[0] })
     }
     func testCustomRestAndRenamedSleepRemainSeparateAfterReopening() throws {
-        var j = Journal(); let rest = j.activities[6].id
+        var j = legacyJournal(); let rest = j.activities[6].id
         var sleep = j.activities[6]; sleep.name = "Ngủ"; sleep.symbol = "bed.double.fill"
         try ActivityCatalog.update(&j, activity: sleep)
         let ordinary = try ActivityCatalog.add(&j, name: "Nghỉ ngơi")

@@ -34,9 +34,17 @@ func XCTAssertThrowsError<T>(_ operation: @autoclosure () throws -> T, file: Sta
         let sleepSchedule = SleepScheduleTests()
         let metrics = ActivityMetricTests()
         let dashboards = DashboardSelectionTests()
+        let defaults = DefaultConfigurationTests()
         let sound = CheckInSoundTests()
         let completion = GoalCompletionTests()
         let cases: [(String, () throws -> Void)] = [
+            ("new journal uses configured activities without personal history", defaults.testNewJournalUsesConfiguredActivitiesAndNoPersonalData),
+            ("reminder audio schedule and navigation match preset", defaults.testReminderAudioScheduleAndNavigationDefaultsMatchPreset),
+            ("new dashboards use preset names with fresh IDs", defaults.testDefaultDashboardsUseThreePresetActivitiesWithFreshIDs),
+            ("preset recording modes keep sleep and ordinary rest separate", defaults.testDefaultRecordingModesKeepSleepAndOrdinaryRestSeparate),
+            ("preset records quick manual sleep without mixing data", defaults.testNewPresetRecordsQuickManualAndSleepWithoutMixingData),
+            ("reset restores preset with no old IDs or history", defaults.testResetRestoresPresetWithoutReusingOldIDsOrHistory),
+            ("existing settings and new preset persist independently", defaults.testExistingJournalAndNewPresetRoundTripWithoutOverwritingStoredSettings),
             ("dashboard defaults choose three priorities once", dashboards.testDefaultsChooseThreePrioritiesAndPrepareOnlyOnce),
             ("dashboard defaults fill to three without archived initialization", dashboards.testDefaultsFillToThreeAndExcludeArchivedOnlyWhenInitializing),
             ("each dashboard keeps independent zero to six selections", dashboards.testEachPageAllowsZeroToSixAndKeepsOtherPagesIndependent),
@@ -213,7 +221,7 @@ func XCTAssertThrowsError<T>(_ operation: @autoclosure () throws -> T, file: Sta
             print("\(before == failures.count ? "PASS" : "FAIL") \(name)")
         }
         // A realistic full year has ~105k five-minute intervals; catch quadratic regressions.
-        var j = Journal()
+        var j = legacyJournal()
         let base = Date(timeIntervalSince1970: 1_700_000_000)
         for index in 0..<105_120 {
             let start = base.addingTimeInterval(Double(index * 300)), end = start.addingTimeInterval(300)

@@ -3,7 +3,7 @@ import NhipCore
 
 final class InterfaceIconTests {
     func testLegacyPreferencesUseDefaultIcons() throws {
-        var j = Journal()
+        var j = legacyJournal()
         var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(j)) as! [String: Any]
         var preferences = object["preferences"] as! [String: Any]
         preferences.removeValue(forKey: "interfaceIcons"); object["preferences"] = preferences
@@ -16,7 +16,7 @@ final class InterfaceIconTests {
         try Engine.validate(j)
     }
     func testIconChoicesPersistAndKeepActivityData() throws {
-        var j = Journal(); let original = j
+        var j = legacyJournal(); let original = j
         for section in InterfaceSection.allCases { section.setSymbol("star.fill", in: &j.preferences) }
         XCTAssertEqual(j.preferences.interfaceIcons?.count, InterfaceSection.allCases.count)
         XCTAssertEqual(j.activities, original.activities); XCTAssertEqual(j.entries, original.entries)
@@ -33,7 +33,7 @@ final class InterfaceIconTests {
         try Engine.validate(j)
     }
     func testIndividualAndAllResetsPreserveUnrelatedChoices() {
-        var j = Journal(); j.preferences.userName = "Tên thử"; j.preferences.sound = true
+        var j = legacyJournal(); j.preferences.userName = "Tên thử"; j.preferences.sound = true
         InterfaceSection.day.setSymbol("star.fill", in: &j.preferences)
         InterfaceSection.week.setSymbol("heart.fill", in: &j.preferences)
         InterfaceSection.day.setSymbol(nil, in: &j.preferences)

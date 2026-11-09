@@ -5,7 +5,7 @@ final class WeeklyGoalTests {
     let base = Date(timeIntervalSince1970: 1_735_689_600)
     func at(_ minute: Double) -> Date { base.addingTimeInterval(minute * 60) }
     func testWeeklyGoalVersionsPreservePastWeeksAndDailyGoal() throws {
-        var j = Journal(); let id = j.activities[0].id, c = j.preferences.calendar
+        var j = legacyJournal(); let id = j.activities[0].id, c = j.preferences.calendar
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: base)
         let dailyID = j.goals[0].id
         try GoalReports.saveWeeklyGoal(&j, activityID: id, minutes: 180, at: base)
@@ -24,7 +24,7 @@ final class WeeklyGoalTests {
         XCTAssertEqual(j.goals.count, 3); try Engine.validate(j)
     }
     func testWeeklyProgressAggregatesDaysAndResetsMonday() throws {
-        var j = Journal(); let id = j.activities[0].id, c = j.preferences.calendar
+        var j = legacyJournal(); let id = j.activities[0].id, c = j.preferences.calendar
         try GoalReports.saveWeeklyGoal(&j, activityID: id, minutes: 60, at: base)
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 60, at: base)
         try Engine.record(&j, entry: Entry(start: base, end: at(30), activityID: id))
@@ -42,7 +42,7 @@ final class WeeklyGoalTests {
         XCTAssertEqual(j.entries.count, 3)
     }
     func testWeeklyProgressSplitsSundayAndMonday() throws {
-        var j = Journal(); let id = j.activities[0].id
+        var j = legacyJournal(); let id = j.activities[0].id
         let week = j.preferences.calendar.dateInterval(of: .weekOfYear, for: base)!
         let monday = week.end
         try GoalReports.saveWeeklyGoal(&j, activityID: id, minutes: 30, at: base)
@@ -57,7 +57,7 @@ final class WeeklyGoalTests {
         XCTAssertFalse(GoalReports.progress(goal, journal: j, at: base, now: monday.addingTimeInterval(1800)).isComplete)
     }
     func testWeeklyValidationDeletionAndUndoPreserveActivity() throws {
-        var j = Journal(); let id = j.activities[0].id, original = j
+        var j = legacyJournal(); let id = j.activities[0].id, original = j
         XCTAssertThrowsError(try GoalReports.saveWeeklyGoal(&j, activityID: id, minutes: 0, at: base))
         XCTAssertThrowsError(try GoalReports.saveWeeklyGoal(&j, activityID: id, minutes: 10081, at: base))
         XCTAssertThrowsError(try GoalReports.saveWeeklyGoal(&j, activityID: UUID(), minutes: 60, at: base))

@@ -11,18 +11,18 @@ final class PriorityTests {
         Reports.priorityComparison(j, period: .week, date: at("2025-11-10T12:00:00"), now: at("2025-11-17T12:00:00"))
     }
     func testUnselectedAndZeroPreviousDoNotInventPercentages() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try add(&j, 0, "2025-11-10T08:00:00", minutes: 60)
         let none = weekly(j)
         XCTAssertTrue(none.activityIDs.isEmpty); XCTAssertEqual(none.currentSeconds, 0); XCTAssertNil(none.changeFraction)
         j.activities[0].isPriority = true
         let selected = weekly(j)
         XCTAssertEqual(selected.currentSeconds, 3600); XCTAssertEqual(selected.previousSeconds, 0); XCTAssertNil(selected.changeFraction)
-        let empty = weekly(Journal())
+        let empty = weekly(legacyJournal())
         XCTAssertEqual(empty.currentSeconds, 0); XCTAssertEqual(empty.previousSeconds, 0)
     }
     func testMultiplePriorityActivitiesAndAllRecordingSources() throws {
-        var j = Journal()
+        var j = legacyJournal()
         for index in [0, 1, 2] { j.activities[index].isPriority = true }
         try add(&j, 0, "2025-11-03T08:00:00", minutes: 60, source: "checkin")
         try add(&j, 1, "2025-11-03T09:00:00", minutes: 30)
@@ -39,7 +39,7 @@ final class PriorityTests {
         XCTAssertEqual(weekly(j).currentSeconds, 195 * 60)
     }
     func testCurrentWeekUsesSameElapsedPartAndClipsEntries() throws {
-        var j = Journal(); j.activities[0].isPriority = true
+        var j = legacyJournal(); j.activities[0].isPriority = true
         try add(&j, 0, "2025-11-03T08:00:00", minutes: 60)
         try add(&j, 0, "2025-11-05T10:00:00", minutes: 60)
         try add(&j, 0, "2025-11-09T08:00:00", minutes: 300)
@@ -51,7 +51,7 @@ final class PriorityTests {
         XCTAssertEqual(s.currentSeconds, 150 * 60); XCTAssertEqual(s.previousSeconds, 60 * 60)
     }
     func testMonthBoundaryAndDifferentMonthLengths() throws {
-        var j = Journal(); j.activities[0].isPriority = true
+        var j = legacyJournal(); j.activities[0].isPriority = true
         try add(&j, 0, "2025-03-31T23:30:00", minutes: 60)
         try add(&j, 0, "2025-04-30T23:30:00", minutes: 60)
         let s = Reports.priorityComparison(j, period: .month, date: at("2025-04-15T12:00:00"), now: at("2025-05-10T12:00:00"))
@@ -61,7 +61,7 @@ final class PriorityTests {
         XCTAssertEqual(s.changeFraction!, 1)
     }
     func testPrioritySurvivesRenameAndArchiveByID() throws {
-        var j = Journal(); j.activities[0].isPriority = true
+        var j = legacyJournal(); j.activities[0].isPriority = true
         try add(&j, 0, "2025-11-10T08:00:00", minutes: 60)
         let before = weekly(j)
         j.activities[0].name = "Học ngoại tuyến"; j.activities[0].symbol = "pencil"; j.activities[0].archived = true
@@ -70,7 +70,7 @@ final class PriorityTests {
         try Engine.validate(j)
     }
     func testLegacyAndJSONSQLitePersistence() throws {
-        var j = Journal(); j.activities[0].isPriority = true; j.activities[1].isPriority = false
+        var j = legacyJournal(); j.activities[0].isPriority = true; j.activities[1].isPriority = false
         j.activities[0].recordingMode = .both
         let data = try JSONEncoder().encode(j)
         XCTAssertEqual(try JSONDecoder().decode(Journal.self, from: data), j)
@@ -88,7 +88,7 @@ final class PriorityTests {
         XCTAssertThrowsError(try JSONDecoder().decode(Journal.self, from: JSONSerialization.data(withJSONObject: object)))
     }
     func testPriorityChangesAndResetDoNotRewriteHistory() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try add(&j, 0, "2025-11-10T08:00:00", minutes: 60)
         try GoalReports.saveDailyGoal(&j, activityID: j.activities[0].id, minutes: 30, at: at("2025-11-10T12:00:00"))
         let entries = j.entries, goals = j.goals, preferences = j.preferences
@@ -96,10 +96,11 @@ final class PriorityTests {
         j.activities[0].isPriority = false; XCTAssertEqual(weekly(j).currentSeconds, 0)
         XCTAssertEqual(j.entries, entries); XCTAssertEqual(j.goals, goals); XCTAssertEqual(j.preferences, preferences)
         j.activities[0].isPriority = true; j.reset(at: at("2025-11-11T12:00:00"))
-        XCTAssertTrue(weekly(j).activityIDs.isEmpty)
+        XCTAssertEqual(weekly(j).activityIDs.count, 5)
+        XCTAssertEqual(weekly(j).currentSeconds, 0)
     }
     func testYearBoundaryAndNegativeChange() throws {
-        var j = Journal(); j.activities[0].isPriority = true
+        var j = legacyJournal(); j.activities[0].isPriority = true
         try add(&j, 0, "2024-12-31T23:00:00", minutes: 120)
         try add(&j, 0, "2024-12-01T08:00:00", minutes: 60)
         let s = Reports.priorityComparison(j, period: .year, date: at("2025-06-01T12:00:00"), now: at("2026-01-10T12:00:00"))
@@ -107,7 +108,7 @@ final class PriorityTests {
         XCTAssertEqual(s.deltaSeconds, -3600); XCTAssertEqual(s.changeFraction!, -0.5)
     }
     func testDailyTotalsIncludeWholePreviousDay() throws {
-        var j = Journal(); j.activities[0].isPriority = true; j.activities[1].isPriority = true
+        var j = legacyJournal(); j.activities[0].isPriority = true; j.activities[1].isPriority = true
         try add(&j, 0, "2025-11-07T20:00:00", minutes: 90)
         try add(&j, 0, "2025-11-08T08:00:00", minutes: 30, source: "checkin")
         try add(&j, 1, "2025-11-08T09:00:00", minutes: 30, source: "personal-timer")
@@ -119,7 +120,7 @@ final class PriorityTests {
         XCTAssertEqual(s.previousRange.start, at("2025-11-07T00:00:00"))
     }
     func testDailyTotalsClipMidnightAndRespectDST() throws {
-        var j = Journal(); j.preferences.timezone = "America/New_York"; j.activities[0].isPriority = true
+        var j = legacyJournal(); j.preferences.timezone = "America/New_York"; j.activities[0].isPriority = true
         let c = j.preferences.calendar
         let sunday = ISO8601DateFormatter().date(from: "2025-11-02T12:00:00-05:00")!
         let day = c.dateInterval(of: .day, for: sunday)!
@@ -130,7 +131,7 @@ final class PriorityTests {
         XCTAssertEqual(s.previousRange.start, day.start)
     }
     func testDailyTotalsFollowSelectedDateAndEmptySelection() throws {
-        var j = Journal(); j.activities[0].isPriority = true
+        var j = legacyJournal(); j.activities[0].isPriority = true
         try add(&j, 0, "2025-11-30T08:00:00", minutes: 60)
         try add(&j, 0, "2025-12-01T08:00:00", minutes: 30)
         try add(&j, 0, "2025-12-02T08:00:00", minutes: 90)

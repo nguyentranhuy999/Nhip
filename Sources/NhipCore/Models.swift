@@ -16,16 +16,26 @@ public struct Activity: Codable, Identifiable, Equatable {
         self.recordingMode = recordingMode
         self.isPriority = isPriority
     }
-    public static var defaults: [Activity] { [
-        Activity(name: "Học", color: "6366F1", symbol: "book.fill"),
-        Activity(name: "Nghiên cứu", color: "0EA5A4", symbol: "magnifyingglass"),
-        Activity(name: "Tập thể thao", color: "F59E0B", symbol: "figure.run", personalKind: .exercise),
-        Activity(name: "Giải trí", color: "EC4899", symbol: "gamecontroller.fill"),
-        Activity(name: "Công việc", color: "3B82F6", symbol: "briefcase.fill"),
-        Activity(name: "Sinh hoạt cá nhân", color: "A78BFA", symbol: "house.fill", personalKind: .personal),
-        Activity(name: "Nghỉ ngơi", color: "84A65B", symbol: "cup.and.saucer.fill", personalKind: .rest),
-        Activity(name: "Khác", color: "94A3B8", symbol: "ellipsis.circle.fill")
-    ] }
+    public static var defaults: [Activity] {
+        func activity(_ name: String, color: String, symbol: String, kind: PersonalActivityKind? = nil,
+                      mode: ActivityRecordingMode = .both, priority: Bool = false) -> Activity {
+            var value = Activity(name: name, color: color, symbol: symbol, personalKind: kind,
+                                 recordingMode: mode, isPriority: priority)
+            value.personalKindResolved = true
+            return value
+        }
+        return [
+            activity("Học tập", color: "6366F1", symbol: "book.fill", priority: true),
+            activity("Nghiên cứu", color: "0EA5A4", symbol: "magnifyingglass", priority: true),
+            activity("Thể thao", color: "F59E0B", symbol: "figure.flexibility", kind: .exercise, mode: .manual, priority: true),
+            activity("Giải trí", color: "EC4899", symbol: "gamecontroller.fill"),
+            activity("Công việc", color: "3B82F6", symbol: "briefcase.fill", priority: true),
+            activity("Sinh hoạt cá nhân", color: "A78BFA", symbol: "house.fill", kind: .personal, mode: .manual),
+            activity("Ngủ", color: "84A65B", symbol: "bed.double.fill", kind: .rest, mode: .manual, priority: true),
+            activity("Khác", color: "94A3B8", symbol: "ellipsis.circle.fill"),
+            activity("Nghỉ ngơi", color: "EF4444", symbol: "cup.and.saucer.fill")
+        ]
+    }
 }
 
 public struct Span: Codable, Identifiable, Equatable {
@@ -82,7 +92,7 @@ public struct Preferences: Codable, Equatable {
     public var dashboardActivities: [String: [UUID]]? // Stable selections for day/week/month/year/summary.
     public var intervalMinutes = 5
     public var timezone = "Asia/Ho_Chi_Minh"
-    public var sound = false
+    public var sound = true
     public var checkInSuccessSound: Bool? // Missing in older journals: confirmation sound enabled.
     public var isCheckInSuccessSoundEnabled: Bool { checkInSuccessSound ?? true }
     public var scheduled = false

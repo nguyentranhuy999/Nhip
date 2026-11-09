@@ -3,7 +3,7 @@ import NhipCore
 
 final class InterfaceNameTests {
     func testLegacyDataKeepsDefaultNamesAndExistingIcons() throws {
-        var original = Journal()
+        var original = legacyJournal()
         InterfaceSection.day.setSymbol("star.fill", in: &original.preferences)
         var object = try JSONSerialization.jsonObject(with: JSONEncoder().encode(original)) as! [String: Any]
         var prefs = object["preferences"] as! [String: Any]
@@ -19,7 +19,7 @@ final class InterfaceNameTests {
         try Engine.validate(decoded)
     }
     func testCustomNamesPersistWithoutChangingTrackingData() throws {
-        var journal = Journal(); journal.preferences.checkInSuccessSound = false
+        var journal = legacyJournal(); journal.preferences.checkInSuccessSound = false
         InterfaceSection.goals.setSymbol("flag.fill", in: &journal.preferences)
         let original = journal
         for section in InterfaceSection.allCases {
@@ -37,7 +37,7 @@ final class InterfaceNameTests {
         try Engine.validate(decoded)
     }
     func testBlankDefaultAndIndividualResetsPreserveOtherChoices() {
-        var journal = Journal()
+        var journal = legacyJournal()
         InterfaceSection.day.setTitle("Hôm nay của tôi", in: &journal.preferences)
         InterfaceSection.goals.setTitle("Kế hoạch", in: &journal.preferences)
         InterfaceSection.goals.setSymbol("star.fill", in: &journal.preferences)

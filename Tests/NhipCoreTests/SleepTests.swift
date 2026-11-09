@@ -5,7 +5,7 @@ import NhipCore
 final class SleepTests {
     let midnight = ISO8601DateFormatter().date(from: "2026-12-31T17:00:00Z")! // 01/01/2027 in Vietnam.
     func testFourFixedDailyTimesAndNativeTriggers() {
-        let c = Journal().preferences.calendar
+        let c = legacyJournal().preferences.calendar
         XCTAssertEqual(SleepReminder.allCases.map(\.timeLabel), ["00:00", "07:00", "12:30", "13:30"])
         XCTAssertEqual(Set(SleepReminder.allCases.map(\.id)).count, 4)
         for reminder in SleepReminder.allCases {
@@ -24,7 +24,7 @@ final class SleepTests {
         }
     }
     func testDailyResetAtLocalMidnightAndNoAutomaticCompletion() {
-        var j = Journal()
+        var j = legacyJournal()
         let before = midnight.addingTimeInterval(-1)
         SleepPlan.setComplete(true, reminder: .nightSleep, journal: &j, on: before)
         XCTAssertTrue(SleepPlan.isComplete(.nightSleep, journal: j, on: before))
@@ -36,7 +36,7 @@ final class SleepTests {
         }
     }
     func testConfirmationIsIdempotentAndCanBeUnchecked() throws {
-        var j = Journal()
+        var j = legacyJournal()
         for _ in 0..<3 { SleepPlan.setComplete(true, reminder: .napSleep, journal: &j, on: midnight) }
         SleepPlan.setComplete(true, reminder: .napWake, journal: &j, on: midnight)
         XCTAssertEqual(j.sleepReminders?.completions.count, 2)
@@ -46,7 +46,7 @@ final class SleepTests {
         try Engine.validate(j)
     }
     func testDisableKeepsHistoryAndIgnoresOldActions() throws {
-        var j = Journal()
+        var j = legacyJournal()
         XCTAssertTrue(SleepPlan.isEnabled(j))
         SleepPlan.setComplete(true, reminder: .morningWake, journal: &j, on: midnight)
         let history = j.sleepReminders?.completions
@@ -59,7 +59,7 @@ final class SleepTests {
         try Engine.validate(j)
     }
     func testLegacyDataAndRoundTripPreserveOtherGoalsAndEntries() throws {
-        var j = Journal()
+        var j = legacyJournal()
         try GoalReports.saveDailyGoal(&j, activityID: j.activities[0].id, minutes: 60, at: midnight)
         try GoalReports.saveWeeklyGoal(&j, activityID: j.activities[1].id, minutes: 180, at: midnight)
         try Engine.record(&j, entry: Entry(start: midnight.addingTimeInterval(-365 * 86400), end: midnight.addingTimeInterval(-365 * 86400 + 300), activityID: j.activities[0].id))
@@ -80,7 +80,7 @@ final class SleepTests {
         try repo.save(j); XCTAssertEqual(try repo.load(), j)
     }
     func testInvalidDatesDuplicatesAndUnknownReminderRejected() throws {
-        var j = Journal(); j.sleepReminders = SleepReminderState()
+        var j = legacyJournal(); j.sleepReminders = SleepReminderState()
         j.sleepReminders?.completions = [SleepCompletion(reminder: .napSleep, day: "2026-02-30")]
         XCTAssertThrowsError(try Engine.validate(j))
         let duplicate = SleepCompletion(reminder: .napSleep, day: "2026-11-07")

@@ -38,13 +38,22 @@ public enum InterfaceSection: String, CaseIterable, Identifiable {
     public var defaultSymbol: String {
         switch self {
         case .day: return "sun.max"
+        case .week: return "7.calendar"
+        case .month: return "30.calendar"
+        case .year: return "chart.bar"
+        case .summary: return "sum"
+        case .goals: return "target"
+        case .personal: return "chart.bar.horizontal.page"
+        case .settings: return "slider.horizontal.3"
+        }
+    }
+    public var fallbackSymbol: String {
+        switch self {
         case .week: return "calendar"
         case .month: return "square.grid.3x3"
         case .year: return "chart.xyaxis.line"
-        case .summary: return "sum"
-        case .goals: return "target"
         case .personal: return "figure.walk"
-        case .settings: return "slider.horizontal.3"
+        default: return defaultSymbol
         }
     }
     public func symbol(in preferences: Preferences) -> String {

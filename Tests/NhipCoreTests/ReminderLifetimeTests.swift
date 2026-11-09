@@ -81,7 +81,7 @@ final class ReminderLifetimeTests {
         XCTAssertTrue(next.step(at: base.addingTimeInterval(360), uptime: 1360).expired)
     }
     func testSleepScheduleChoosesNearestSlotAndRollsIntoNextDay() {
-        let c = Journal().preferences.calendar
+        let c = legacyJournal().preferences.calendar
         let beforeNap = ISO8601DateFormatter().date(from: "2026-11-07T05:29:59Z")!
         let nap = SleepPlan.nextReminder(after: beforeNap, calendar: c)!
         XCTAssertEqual(nap.reminder, .napSleep)

@@ -5,7 +5,9 @@ import NhipCore
 extension InterfaceSection {
     func displaySymbol(in preferences: Preferences) -> String {
         let name = symbol(in: preferences)
-        return NSImage(systemSymbolName: name, accessibilityDescription: nil) == nil ? defaultSymbol : name
+        if NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil { return name }
+        if NSImage(systemSymbolName: defaultSymbol, accessibilityDescription: nil) != nil { return defaultSymbol }
+        return fallbackSymbol
     }
 }
 
