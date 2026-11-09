@@ -16,6 +16,7 @@ import NhipCore
     @Published var previewInterval: Span?
     @Published var loginEnabled = false
     @Published var settingsTab = 3
+    @Published var dashboardSettingsPage: DashboardPage = .day
     @Published var showAllTimeSummary = true
     @Published var showGoals = false
     @Published var showPersonalActivities = false
@@ -32,6 +33,8 @@ import NhipCore
     private(set) var storageFailed = false
     private var sleepSmokeTest: Bool { demo && CommandLine.arguments.contains("--smoke-sleep") && CommandLine.arguments.contains("--data-dir") }
     private lazy var sleepNotifications = SleepNotifications(demo: demo, diagnosticsURL: sleepSmokeTest ? dataDirectory.appendingPathComponent("sleep-schedule-check.json") : nil)
+    private let checkInSuccessSound = CheckInSuccessSound()
+    private var configuredSleepSchedule: SleepSchedule?
     private lazy var quickAlert = makeAlertController(kind: "quick")
     private lazy var sleepAlert = makeAlertController(kind: "sleep")
     private var alertEvents: [[String: Any]] = []
@@ -49,6 +52,7 @@ import NhipCore
             repository = repo
             journal = try repo.load()
             PersonalTracking.prepare(&journal)
+            DashboardSelection.prepare(&journal)
             SleepPlan.prepareStatistics(journal: &journal)
             Engine.recover(&journal)
             if demo && journal.entries.isEmpty && !args.contains("--smoke-reminder") { seedDemo() }
@@ -177,7 +181,7 @@ import NhipCore
     func prepareToTerminate() async {
         if !storageFailed { advance(); Engine.close(&journal, at: Date()); persist() }
         cancelReminder()
-        quickAlert.cancel(); dismissSleepAlert()
+        quickAlert.cancel(); checkInSuccessSound.stop(); dismissSleepAlert()
         await sleepNotifications.prepareToTerminate()
     }
     func persist() {
@@ -188,7 +192,7 @@ import NhipCore
     @discardableResult func perform(_ operation: (inout Journal) throws -> Void) -> Bool {
         guard !storageFailed else { return false }
         do {
-            var draft = journal; try operation(&draft); PersonalTracking.prepare(&draft); SleepPlan.prepareStatistics(journal: &draft)
+            var draft = journal; try operation(&draft); PersonalTracking.prepare(&draft); DashboardSelection.prepare(&draft); SleepPlan.prepareStatistics(journal: &draft)
             if PersonalTracking.quickActivities(draft).isEmpty { Engine.close(&draft, at: Date()) }
             try Engine.validate(draft)
             try repository?.save(draft); undoState = journal; undoBaselineIntervals = Set(draft.intervals.map(\.id)); journal = draft
@@ -208,21 +212,35 @@ import NhipCore
         do { try Engine.validate(restored); try repository?.save(restored); journal = restored; undoState = nil; notice = "Đã hoàn tác."; syncSleepReminders(); advance() }
         catch { self.error = error.localizedDescription }
     }
-    func answer(_ span: Span, activityID: UUID, note: String = "") {
-        guard quickActivities.contains(where: { $0.id == activityID }) else { return }
-        perform { try Engine.answer(&$0, intervalID: span.id, activityID: activityID, note: note) }
+    @discardableResult func answer(_ span: Span, activityID: UUID, note: String = "") -> Bool {
+        guard quickActivities.contains(where: { $0.id == activityID }),
+              !Engine.isAnswered(journal, interval: span) else { return false }
+        guard perform({ try Engine.answer(&$0, intervalID: span.id, activityID: activityID, note: note) }) else { return false }
+        quickAlert.cancel()
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["nhip.checkin"])
-        if error == nil && selectedInterval == span.id { WindowManager.shared.quick?.close() }
+        if selectedInterval == span.id { WindowManager.shared.quick?.close() }
+        if journal.preferences.isCheckInSuccessSoundEnabled { checkInSuccessSound.play() }
+        return true
+    }
+    func previewCheckInSuccessSound() { checkInSuccessSound.play() }
+    func confirmPreviewCheckIn() {
+        guard previewInterval != nil else { return }
+        quickAlert.cancel()
+        WindowManager.shared.quick?.close()
+        if journal.preferences.isCheckInSuccessSoundEnabled { checkInSuccessSound.play() }
     }
     func skip(_ span: Span) {
         perform { if !$0.skipped.contains(span.id) { $0.skipped.append(span.id) } }
         selectedInterval = nil
         WindowManager.shared.quick?.close()
     }
-    func updatePreferences(_ preferences: Preferences) {
+    func updatePreferences(_ preferences: Preferences, sleepSchedule: SleepSchedule? = nil) {
         guard !storageFailed else { return }
         advance(); Engine.close(&journal, at: Date())
-        perform { $0.preferences = preferences }
+        perform {
+            $0.preferences = preferences
+            if let sleepSchedule { try SleepPlan.setSchedule(sleepSchedule, journal: &$0) }
+        }
         advance()
     }
     func refreshAuthorization() {
@@ -230,9 +248,11 @@ import NhipCore
     }
     func syncSleepReminders() {
         guard !storageFailed else { return }
-        if !SleepPlan.isEnabled(journal) { dismissSleepAlert() }
+        let schedule = SleepPlan.schedule(journal)
+        if !SleepPlan.isEnabled(journal) || (configuredSleepSchedule != nil && configuredSleepSchedule != schedule) { dismissSleepAlert() }
+        configuredSleepSchedule = schedule
         sleepNotifications.reconcile(enabled: SleepPlan.isEnabled(journal), calendar: journal.preferences.calendar,
-                                     authorized: authorization == .authorized || authorization == .provisional,
+                                     authorized: authorization == .authorized || authorization == .provisional, schedule: schedule,
                                      onReminder: { [weak self] reminder, date, preview in
                                          self?.presentSleepAlert(reminder, date: date, preview: preview)
                                      })
@@ -293,7 +313,7 @@ import NhipCore
         guard !storageFailed, !systemSuspended, SleepPlan.isEnabled(journal),
               Date().timeIntervalSince(date) < ReminderLifetime.duration else { return }
         if !preview {
-            let goalDate = reminder == .nightSleep ? journal.preferences.calendar.date(byAdding: .day, value: -1, to: date)! : date
+            let goalDate = SleepPlan.goalDate(for: reminder, scheduledAt: date, journal: journal)
             if SleepPlan.isComplete(reminder, journal: journal, on: goalDate) { return }
         }
         activeSleepAlert = SleepAlert(reminder: reminder, date: date, preview: preview)

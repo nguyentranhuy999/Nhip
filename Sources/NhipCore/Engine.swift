@@ -128,6 +128,7 @@ public enum Engine {
         try PersonalTracking.validate(j)
         try SleepTracking.validate(j.sleepHistory, journal: j)
         try SleepPlan.validate(j.sleepReminders)
+        try DashboardSelection.validate(j)
         guard j.schemaVersion == 1 else { throw JournalError.invalid("Phiên bản sao lưu không được hỗ trợ.") }
         guard [5,10,15,30,60].contains(j.preferences.intervalMinutes), TimeZone(identifier: j.preferences.timezone) != nil else { throw JournalError.invalid("Cài đặt chu kỳ hoặc múi giờ không hợp lệ.") }
         guard !j.activities.isEmpty, Set(j.activities.map(\.id)).count == j.activities.count,

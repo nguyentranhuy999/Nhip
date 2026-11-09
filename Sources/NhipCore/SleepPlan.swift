@@ -14,10 +14,10 @@ public enum SleepReminder: String, Codable, CaseIterable, Identifiable, Sendable
     public var isBedtime: Bool { self == .nightSleep || self == .napSleep }
     public var confirmationTitle: String { isBedtime ? "Đã đi ngủ" : "Đã thức dậy" }
     public var symbol: String { isBedtime ? "moon.zzz.fill" : "sun.max.fill" }
-    public func dateComponents(calendar: Calendar) -> DateComponents {
+    public func dateComponents(calendar: Calendar, schedule: SleepSchedule = SleepSchedule()) -> DateComponents {
         var components = DateComponents()
         components.calendar = calendar; components.timeZone = calendar.timeZone
-        components.hour = hour; components.minute = minute; components.second = 0
+        components.hour = schedule[self] / 60; components.minute = schedule[self] % 60; components.second = 0
         return components
     }
 }
@@ -32,6 +32,7 @@ public struct SleepReminderState: Codable, Equatable {
     public var enabled = true
     public var completions: [SleepCompletion] = []
     public var statisticsStartDay: String?
+    public var schedule: SleepSchedule?
     public init() {}
 }
 
@@ -49,11 +50,26 @@ public enum SleepPlan {
         if journal.sleepReminders == nil { journal.sleepReminders = SleepReminderState() }
         journal.sleepReminders?.statisticsStartDay = dayKey(min(first, now), calendar: calendar)
     }
-    public static func nextReminder(after date: Date, calendar: Calendar) -> (reminder: SleepReminder, date: Date)? {
+    public static func nextReminder(after date: Date, calendar: Calendar, schedule: SleepSchedule = SleepSchedule()) -> (reminder: SleepReminder, date: Date)? {
         SleepReminder.allCases.compactMap { reminder in
-            calendar.nextDate(after: date, matching: reminder.dateComponents(calendar: calendar), matchingPolicy: .nextTime)
+            calendar.nextDate(after: date, matching: reminder.dateComponents(calendar: calendar, schedule: schedule), matchingPolicy: .nextTime)
                 .map { (reminder: reminder, date: $0) }
         }.min { $0.date < $1.date }
+    }
+    public static func schedule(_ journal: Journal) -> SleepSchedule {
+        journal.sleepReminders?.schedule ?? SleepSchedule()
+    }
+    public static func setSchedule(_ schedule: SleepSchedule, journal: inout Journal) throws {
+        try schedule.validate()
+        var state = journal.sleepReminders ?? SleepReminderState()
+        state.schedule = schedule == SleepSchedule() ? nil : schedule
+        journal.sleepReminders = state
+    }
+    public static func goalDate(for reminder: SleepReminder, scheduledAt date: Date, journal: Journal) -> Date {
+        if reminder == .nightSleep && schedule(journal).nightBedtimeIsNextDay {
+            return journal.preferences.calendar.date(byAdding: .day, value: -1, to: date)!
+        }
+        return date
     }
     public static func isEnabled(_ journal: Journal) -> Bool { journal.sleepReminders?.enabled ?? true }
     public static func dayKey(_ date: Date, calendar: Calendar) -> String {
@@ -79,6 +95,7 @@ public enum SleepPlan {
     }
     public static func validate(_ state: SleepReminderState?) throws {
         guard let state else { return }
+        try state.schedule?.validate()
         var keys = Set<String>()
         let formatter = DateFormatter(); formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian); formatter.timeZone = TimeZone(secondsFromGMT: 0)

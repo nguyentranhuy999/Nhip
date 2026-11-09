@@ -1,8 +1,8 @@
 import AppKit
 import Foundation
 
-enum ActivitySymbolGroup: String, CaseIterable, Identifiable {
-    case all, study, health, life, leisure, travel, general
+enum ActivitySymbolGroup: String, CaseIterable, Identifiable, Sendable {
+    case all, study, health, life, leisure, travel, general, communication, weather, devices, nature, editing, text, media, keyboard, commerce, time, shapes, arrows, numbers, math, security, accessibility
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -13,20 +13,41 @@ enum ActivitySymbolGroup: String, CaseIterable, Identifiable {
         case .leisure: return "Giải trí"
         case .travel: return "Di chuyển"
         case .general: return "Khác"
+        case .communication: return "Giao tiếp"
+        case .weather: return "Thời tiết"
+        case .devices: return "Thiết bị"
+        case .nature: return "Thiên nhiên"
+        case .editing: return "Chỉnh sửa"
+        case .text: return "Văn bản"
+        case .media: return "Âm thanh & video"
+        case .keyboard: return "Bàn phím"
+        case .commerce: return "Mua sắm & tiền tệ"
+        case .time: return "Thời gian"
+        case .shapes: return "Hình dạng"
+        case .arrows: return "Mũi tên"
+        case .numbers: return "Chữ & số"
+        case .math: return "Toán học"
+        case .security: return "Bảo mật"
+        case .accessibility: return "Trợ năng"
         }
     }
 }
 
-struct ActivitySymbol: Identifiable {
+struct ActivitySymbol: Identifiable, Sendable {
     let name: String
     let title: String
     let keywords: String
     let group: ActivitySymbolGroup
     var id: String { name }
+    let searchText: String
+    init(name: String, title: String, keywords: String, group: ActivitySymbolGroup) {
+        self.name = name; self.title = title; self.keywords = keywords; self.group = group
+        self.searchText = ActivitySymbols.normalized(title + " " + keywords + " " + name + " " + group.title)
+    }
 }
 
 enum ActivitySymbols {
-    static let all: [ActivitySymbol] = {
+    private static let curated: [ActivitySymbol] = {
         let groups: [(ActivitySymbolGroup, [(String, String, String)])] = [
             (.study, [
                 ("book.fill", "Sách", "học đọc study read"),
@@ -199,15 +220,31 @@ enum ActivitySymbols {
         }
     }()
 
-    static func matching(_ query: String, group: ActivitySymbolGroup) -> [ActivitySymbol] {
+    static let all: [ActivitySymbol] = {
+        var result = curated
+        var seen = Set(result.map(\.name))
+        for line in ActivitySymbolCatalog.rows.split(separator: "\n") {
+            let fields = line.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false)
+            guard fields.count == 3 else { continue }
+            let name = String(fields[1])
+            guard seen.insert(name).inserted,
+                  NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil else { continue }
+            let group = ActivitySymbolGroup(rawValue: String(fields[0])) ?? .general
+            let title = name.replacingOccurrences(of: ".", with: " ")
+            result.append(ActivitySymbol(name: name, title: title, keywords: String(fields[2]), group: group))
+        }
+        return result
+    }()
+
+    static func matching(_ query: String, group: ActivitySymbolGroup, in symbols: [ActivitySymbol]? = nil) -> [ActivitySymbol] {
+        let items = symbols ?? all
         let terms = normalized(query).split(whereSeparator: \.isWhitespace).map(String.init)
-        return all.filter { item in
-            (group == .all || item.group == group) && terms.allSatisfy {
-                normalized(item.title + " " + item.keywords + " " + item.name + " " + item.group.title).contains($0)
-            }
+        if terms.isEmpty && group == .all { return items }
+        return items.filter { item in
+            (group == .all || item.group == group) && terms.allSatisfy { item.searchText.contains($0) }
         }
     }
-    private static func normalized(_ text: String) -> String {
+    static func normalized(_ text: String) -> String {
         text.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "vi_VN"))
             .lowercased().replacingOccurrences(of: "đ", with: "d")
     }

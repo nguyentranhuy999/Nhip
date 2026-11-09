@@ -6,7 +6,7 @@ struct PersonalActivitiesView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("Hoạt động hàng ngày").font(.system(size: 29, weight: .bold, design: .rounded))
+                Text(InterfaceSection.personal.title(in: model.journal.preferences)).font(.system(size: 29, weight: .bold, design: .rounded))
                 SleepTrackingView(model: model)
                 TimedActivitiesView(model: model)
             }.padding(28)

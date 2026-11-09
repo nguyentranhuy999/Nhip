@@ -77,9 +77,14 @@ public struct ScheduleWindow: Codable, Identifiable, Equatable {
 
 public struct Preferences: Codable, Equatable {
     public var userName: String? // Missing in older journals: use the macOS account name.
+    public var interfaceIcons: [String: String]? // Missing in older journals: default navigation icons.
+    public var interfaceTitles: [String: String]? // Missing in older journals: default navigation titles.
+    public var dashboardActivities: [String: [UUID]]? // Stable selections for day/week/month/year/summary.
     public var intervalMinutes = 5
     public var timezone = "Asia/Ho_Chi_Minh"
     public var sound = false
+    public var checkInSuccessSound: Bool? // Missing in older journals: confirmation sound enabled.
+    public var isCheckInSuccessSoundEnabled: Bool { checkInSuccessSound ?? true }
     public var scheduled = false
     public var windows: [ScheduleWindow] = []
     public var onboarded = false

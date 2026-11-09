@@ -10,6 +10,7 @@ import NhipCore
     private var enabled = false
     private var authorized = false
     private var calendar = Calendar(identifier: .gregorian)
+    private var schedule = SleepSchedule()
     private var timer: Timer?
     private var previewTimer: Timer?
     private var onReminder: ((SleepReminder, Date, Bool) -> Void)?
@@ -28,23 +29,24 @@ import NhipCore
             UNNotificationCategory(identifier: bedtime ? "SLEEP_BEDTIME" : "SLEEP_WAKE", actions: [], intentIdentifiers: [])
         })
     }
-    private static func content(_ reminder: SleepReminder) -> UNMutableNotificationContent {
+    private static func content(_ reminder: SleepReminder, schedule: SleepSchedule) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
         content.title = "Nhịp · \(reminder.title)"
-        content.body = "\(reminder.timeLabel) · Đến giờ \(reminder.title.lowercased())."
+        content.body = "\(schedule.timeLabel(for: reminder)) · Đến giờ \(reminder.title.lowercased())."
         content.categoryIdentifier = reminder.isBedtime ? "SLEEP_BEDTIME" : "SLEEP_WAKE"
         content.sound = .default
         content.userInfo = ["sleepReminder": reminder.rawValue, "sleepPreview": false]
         return content
     }
-    func reconcile(enabled: Bool, calendar: Calendar, authorized: Bool,
+    func reconcile(enabled: Bool, calendar: Calendar, authorized: Bool, schedule: SleepSchedule = SleepSchedule(),
                    onReminder: @escaping (SleepReminder, Date, Bool) -> Void) {
         guard !stopping else { return }
         self.onReminder = onReminder
-        let signature = "\(enabled)|\(calendar.timeZone.identifier)|\(authorized)"
+        let times = SleepReminder.allCases.map { String(schedule[$0]) }.joined(separator: ",")
+        let signature = "\(enabled)|\(calendar.timeZone.identifier)|\(authorized)|\(times)"
         guard signature != configuration else { return }
         configuration = signature
-        self.enabled = enabled; self.calendar = calendar; self.authorized = authorized
+        self.enabled = enabled; self.calendar = calendar; self.authorized = authorized; self.schedule = schedule
         // While Nhịp runs, its panel controls the exact lifetime and sound cadence.
         // Native repeating alerts are restored when the app quits gracefully.
         let center = UNUserNotificationCenter.current()
@@ -63,7 +65,7 @@ import NhipCore
     func rearm() {
         clockGeneration += 1
         timer?.invalidate(); timer = nil
-        guard enabled, !stopping, let next = SleepPlan.nextReminder(after: Date(), calendar: calendar) else { return }
+        guard enabled, !stopping, let next = SleepPlan.nextReminder(after: Date(), calendar: calendar, schedule: schedule) else { return }
         let generation = clockGeneration
         let timer = Timer(timeInterval: max(0.01, next.date.timeIntervalSinceNow), repeats: false) { [weak self] _ in
             Task { @MainActor in
@@ -104,8 +106,8 @@ import NhipCore
             if enabled && authorized && (!demo || diagnosticsURL != nil) {
                 for reminder in SleepReminder.allCases {
                     try await center.add(UNNotificationRequest(identifier: prefix + reminder.rawValue,
-                        content: Self.content(reminder),
-                        trigger: UNCalendarNotificationTrigger(dateMatching: reminder.dateComponents(calendar: calendar), repeats: true)))
+                        content: Self.content(reminder, schedule: schedule),
+                        trigger: UNCalendarNotificationTrigger(dateMatching: reminder.dateComponents(calendar: calendar, schedule: schedule), repeats: true)))
                 }
             }
             await writeDiagnostics(mode: "nativeFallback")
@@ -122,7 +124,7 @@ import NhipCore
                     "timezone": trigger?.dateComponents.timeZone?.identifier ?? "",
                     "next": trigger?.nextTriggerDate()?.timeIntervalSince1970 ?? 0]
         }
-        let next = enabled ? SleepPlan.nextReminder(after: Date(), calendar: calendar) : nil
+        let next = enabled ? SleepPlan.nextReminder(after: Date(), calendar: calendar, schedule: schedule) : nil
         let info: [String: Any] = ["mode": mode, "enabled": enabled, "authorized": authorized, "pending": rows,
                                   "nextReminder": next?.reminder.rawValue ?? "", "nextDate": next?.date.timeIntervalSince1970 ?? 0]
         do { try JSONSerialization.data(withJSONObject: info, options: [.prettyPrinted, .sortedKeys]).write(to: diagnosticsURL, options: .atomic) }

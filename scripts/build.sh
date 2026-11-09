@@ -8,6 +8,9 @@ if [[ ! -f Resources/Nhip.icns || Resources/MakeIcon.swift -nt Resources/Nhip.ic
     swift Resources/MakeIcon.swift "$PWD/.build"
     iconutil -c icns .build/Nhip.iconset -o Resources/Nhip.icns
 fi
+if [[ ! -f Resources/CheckInSuccess.wav || Resources/MakeCheckInSound.py -nt Resources/CheckInSuccess.wav ]]; then
+    python3 Resources/MakeCheckInSound.py
+fi
 BUNDLE_STAGE="$(mktemp -d "${TMPDIR:-/tmp/}nhip-bundle.XXXXXX")"
 trap 'rm -rf "$BUNDLE_STAGE"' EXIT
 APP="$BUNDLE_STAGE/Nhip.app"
@@ -15,6 +18,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Nhip "$APP/Contents/MacOS/Nhip"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 if [[ -f Resources/Nhip.icns ]]; then cp Resources/Nhip.icns "$APP/Contents/Resources/Nhip.icns"; fi
+cp Resources/CheckInSuccess.wav "$APP/Contents/Resources/CheckInSuccess.wav"
 xattr -dr com.apple.FinderInfo "$APP" 2>/dev/null || true
 codesign --force --sign - --identifier vn.local.nhip "$APP"
 codesign --verify --strict "$APP"

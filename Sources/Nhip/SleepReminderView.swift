@@ -1,4 +1,5 @@
 import SwiftUI
+import NhipCore
 
 struct SleepReminderView: View {
     @ObservedObject var model: AppModel
@@ -9,7 +10,7 @@ struct SleepReminderView: View {
                     Image(systemName: alert.reminder.symbol).font(.system(size: 30)).foregroundStyle(.indigo)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(alert.preview ? "Thử lời nhắc ngủ" : alert.reminder.title).font(.title2.bold())
-                        Text(alert.reminder.timeLabel).font(.title3.monospacedDigit()).foregroundStyle(.secondary)
+                        Text(SleepPlan.schedule(model.journal).timeLabel(for: alert.reminder)).font(.title3.monospacedDigit()).foregroundStyle(.secondary)
                     }
                     Spacer()
                 }

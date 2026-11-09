@@ -28,8 +28,49 @@ func XCTAssertThrowsError<T>(_ operation: @autoclosure () throws -> T, file: Sta
         let modes = RecordingModeTests()
         let priority = PriorityTests()
         let appearance = ActivityAppearanceTests()
+        let interface = InterfaceIconTests()
+        let names = InterfaceNameTests()
+        let catalog = ActivityCatalogTests()
+        let sleepSchedule = SleepScheduleTests()
+        let metrics = ActivityMetricTests()
+        let dashboards = DashboardSelectionTests()
+        let sound = CheckInSoundTests()
         let completion = GoalCompletionTests()
         let cases: [(String, () throws -> Void)] = [
+            ("dashboard defaults choose three priorities once", dashboards.testDefaultsChooseThreePrioritiesAndPrepareOnlyOnce),
+            ("dashboard defaults fill to three without archived initialization", dashboards.testDefaultsFillToThreeAndExcludeArchivedOnlyWhenInitializing),
+            ("each dashboard keeps independent zero to six selections", dashboards.testEachPageAllowsZeroToSixAndKeepsOtherPagesIndependent),
+            ("dashboard rejects seventh duplicate unknown choices atomically", dashboards.testSeventhDuplicateAndUnknownActivitiesAreRejectedAtomically),
+            ("dashboard cards follow stable IDs order and live metadata", dashboards.testSelectedCardsFollowIDsOrderAndLiveMetadataAcrossAllPages),
+            ("dashboard choices do not affect priority or full reports", dashboards.testDashboardSelectionDoesNotAffectPriorityComparisonsOrFullReport),
+            ("dashboard legacy persistence empty selection and reset", dashboards.testLegacyPersistenceEmptySelectionsAndReset),
+            ("activity cards preserve renamed totals across every report period", metrics.testRenamingAndAppearancePreserveTotalsAcrossEveryReportPeriod),
+            ("reusing an old activity name never steals history", metrics.testReusingOldNameDoesNotStealTotalsFromRenamedActivity),
+            ("activity cards follow settings order and retain archived history", metrics.testCardsFollowSettingsOrderAndRetainArchivedHistory),
+            ("renamed sleep and ordinary rest stay separate after reopening", metrics.testCustomRestAndRenamedSleepRemainSeparateAfterReopening),
+            ("legacy sleep state and sessions keep default deadlines", sleepSchedule.testLegacyStateAndSessionsUseOriginalDefaultTimes),
+            ("sleep schedule persists independently and survives toggling", sleepSchedule.testSchedulePersistsWithoutChangingHistoryAndSurvivesDisable),
+            ("invalid sleep schedules are rejected atomically", sleepSchedule.testInvalidTimesAndOrderingAreRejectedAtomically),
+            ("all native triggers and next reminders follow chosen times", sleepSchedule.testCustomNativeTriggersAndNextReminderFollowAllFourTimes),
+            ("night bedtime before midnight uses custom deadlines", sleepSchedule.testBeforeMidnightBedtimeAndWakeUseCustomDeadlines),
+            ("night bedtime after midnight keeps previous evening across year", sleepSchedule.testAfterMidnightBedtimeBelongsToPreviousEveningAcrossYearBoundary),
+            ("schedule edits preserve active and historical goal results", sleepSchedule.testChangingScheduleKeepsActiveAndHistoricalGoalResults),
+            ("new sleep sessions persist current deadline snapshot", sleepSchedule.testNewSessionsUseChangedScheduleAndPersistTheirSnapshot),
+            ("custom sleep times respect DST and actual rest duration", sleepSchedule.testCustomTimesRespectDSTLocalClockAndActualRestDuration),
+            ("duplicate names are rejected atomically including archived and normalized variants", catalog.testDuplicateNamesAndWhitespaceAreRejectedAtomically),
+            ("activity rename rejects conflicts and preserves self history", catalog.testRenamingRejectsConflictsButKeepsSelfAndHistory),
+            ("new activity names and icons never assign special roles", catalog.testNewActivitiesNeverInferRolesFromNamesOrIcons),
+            ("sleep follows renamed rest role instead of ordinary namesake", catalog.testSleepUsesRenamedRestRoleInsteadOfOrdinaryNamesake),
+            ("sleep creates unique special name when ordinary namesake exists", catalog.testSleepCreatesUniqueSpecialCategoryIfOnlyOrdinaryNamesakeExists),
+            ("legacy duplicate names load without merging history", catalog.testLegacyDuplicatesStillLoadWithoutDeletingOrMergingHistory),
+            ("legacy interface names keep defaults and icons", names.testLegacyDataKeepsDefaultNamesAndExistingIcons),
+            ("custom interface names persist without changing tracking data", names.testCustomNamesPersistWithoutChangingTrackingData),
+            ("interface name resets preserve other choices", names.testBlankDefaultAndIndividualResetsPreserveOtherChoices),
+            ("legacy journal enables confirmation without altering reminder audio", sound.testLegacyJournalsEnableConfirmationWithoutChangingAlertSound),
+            ("confirmation sound mute persists independently of other settings", sound.testMutedConfirmationPersistsAndDoesNotChangeOtherPreferences),
+            ("interface icons support legacy preferences", interface.testLegacyPreferencesUseDefaultIcons),
+            ("interface icons persist without changing activity data", interface.testIconChoicesPersistAndKeepActivityData),
+            ("interface icon resets preserve unrelated choices", interface.testIndividualAndAllResetsPreserveUnrelatedChoices),
             ("ordinary activity keeps its role when changing personal icons", appearance.testOrdinaryActivityStaysOrdinaryWhenChoosingPersonalIcons),
             ("personal roles survive cosmetic edits", appearance.testPersonalRolesSurviveChoosingUnrelatedIconsAndNames),
             ("explicit ordinary role persists and legacy inference remains", appearance.testExplicitOrdinaryRolePersistsAndLegacyInferenceStillWorks),

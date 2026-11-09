@@ -1,5 +1,88 @@
-# Kiểm tra bản 1.0–1.13.0
+# Kiểm tra bản 1.0–1.17.0
 
+
+## Cập nhật 1.17.0 — chọn tối đa 6 hoạt động riêng cho mỗi dashboard
+
+- Thay hiển thị toàn danh mục bằng Reports.dashboardMetrics, dùng mảng ID có thứ tự cho từng day/week/month/year/summary. Tên/icon/màu và giờ vẫn đọc theo ID hiện tại.
+- Tab Cài đặt Dashboard: chọn trang, n/6, hàng chọn/bỏ bấm toàn dòng, mũi tên đổi thứ tự, tự lưu. Đủ 6 khóa mục chưa chọn, vẫn bỏ/di chuyển được. Đặt lại 3 mặc định chỉ tác động trang hiện tại. Chọn rỗng hiện nút cấu hình trên đúng dashboard. Mục lưu trữ đã chọn không bị tự bỏ.
+- Preferences.dashboardActivities optional, mặc định 3 ưu tiên đầu tiên và bổ sung mục thường nếu thiếu. Chuẩn bị/lưu lần đầu, không đổi theo lần đổi cờ ưu tiên/danh mục sau đó. Globalsave giữ cấu hình mới. Engine.validate chặn >6/ID trùng/ID lạ/khóa trang lạ.
+- **170/170 Core checks đạt**. Bảy ca mới: mặc định ưu tiên và chỉ khởi tạo một lần; bổ sung đủ 3/archived; các trang độc lập 0–6 và giữ rỗng; từ chối mục thứ 7/trùng/ID lạ nguyên tử và validation load; metadata ID/thứ tự qua rename/tên cũ/new activity/archive; không đổi phép so sánh ưu tiên/tổng báo cáo; JSON/SQLite/reset/dữ liệu cũ.
+- Dữ liệu Entry/Goal/giấc ngủ không thay đổi; khi cập nhật chỉ thêm cấu hình ID cho năm dashboard vào Preferences. Chưa tự động thao tác UI trực tiếp trong lượt này.
+
+## Cập nhật 1.16.1 — ô thống kê động theo ID hoạt động
+
+- Nguyên nhân: thẻ cố định lọc tên Học/Nghiên cứu/...; đổi tên mất lookup, tổng về 0 và fallback icon cũ. Dữ liệu Entry vẫn còn theo activityID.
+- Reports.activityMetrics dùng ID để cộng giờ, lấy Activity hiện tại cho tên/icon/màu; Dashboard ForEach theo UUID và lưới ba cột dùng cho cả bốn kỳ và Tổng kết. Hiện tất cả hoạt động đang dùng theo thứ tự Cài đặt (gồm hoạt động tự thêm), mục lưu trữ có thời gian trong kỳ vẫn hiện để bảo toàn lịch sử. Không còn tên/card/icon/màu fallback mặc định hoặc gộp hai hoạt động theo tên.
+- 163/163 Core checks đạt. Bốn hồi quy mới: rename/icon/color qua Ngày/Tuần/Tháng/Năm/Tổng kết, cắt Entry qua năm/nửa đêm; tạo hoạt động dùng lại tên cũ không lấy nhầm giờ; thứ tự và archive có/không dữ liệu; mục Ngủ đổi tên và Nghỉ ngơi thông thường tách giờ/metadata qua JSON/SQLite.
+- Không đổi dữ liệu/schema hoặc chạy migration. Chưa tự động thao tác giao diện trực tiếp trong lượt này.
+
+## Cập nhật 1.16.0 — tùy chỉnh bốn giờ nhắc ngủ
+
+- Cài đặt có DatePicker giờ/phút cho bốn mốc, Lưu giờ nhắc/Giờ mặc định; Lưu cài đặt cuối trang cũng lưu lịch. DatePicker dùng ngày tham chiếu thông thường, Calendar/TimeZone cấu hình. Thay đổi draft xóa lỗi; lỗi giờ/thứ tự/trùng mốc hiện trong Cài đặt.
+- SleepSchedule lưu phút từ đầu ngày trong SleepReminderState.schedule optional. Tất cả timer, nội dung panel/native và UNCalendarNotificationTrigger nhận lịch mới; chữ ký reconcile chứa giờ để việc chỉ đổi giờ cũng lên lịch lại. Đổi lịch đóng panel cũ. Bật/tắt không mất lịch.
+- SleepSession snapshot lưu lịch lúc start; nil legacy dùng mặc định cũ. Hạn ngủ đêm trước/sau nửa đêm và goalDate của nhắc sửa theo giờ mới; wake goal vẫn ngày kế tiếp. Mục tiêu hiển thị cutoff của phiên tương ứng, kể cả phiên đang ngủ. Đổi lịch không hồi tố lịch sử/thống kê.
+- **159/159 Core checks đạt**. Chín ca mới: legacy state/session default; JSON/SQLite/lưu lịch/tắt-bật/reset giữ dữ liệu khác; giờ/phối hợp không hợp lệ và tính nguyên tử; bốn trigger native/next-reminder; ngủ đêm trước midnight đúng phút; sau midnight qua giao năm; snapshot giữ phiên đang ngủ/kết quả cũ; phiên mới dùng lịch mới; DST/local clock và thời lượng nghỉ thực.
+- Chưa tự động thao tác UI hoặc kiểm tra phát nhắc theo đồng hồ thật trong lượt này; các UNCalendarNotificationTrigger được kiểm tra trực tiếp trong checks.
+
+## Cập nhật 1.15.2 — chỉ báo tên trùng tại Cài đặt
+
+- Nguyên nhân: thêm hoạt động gọi Catalog.add bên trong model.perform, nên lỗi tên trùng gán AppModel.error; cả Dashboard và PreferencesView cùng có FeedbackModifier theo dõi biến này nên đều bật alert.
+- Chuẩn bị/kiểm tra journal tạm tại PreferencesView.addActivity, bắt lỗi vào newActivityError của view và hiển thị dưới ô thêm. Chỉ khi hợp lệ mới gọi perform lưu journal; lỗi trùng không đi vào error dùng chung. Sửa nội dung/thêm thành công xóa lỗi; giữ tên đã nhập khi lỗi.
+- Đổi tên trùng vẫn báo tại sheet CategoryEditor như trước. Không đổi kiểm tra trùng tên ở Core, không thêm hoặc chạy lại test cho thay đổi UI cục bộ; 150/150 Core checks đã đạt ở 1.15.1.
+
+## Cập nhật 1.15.1 — chặn tên trùng và không suy vai trò hoạt động mới
+
+- ActivityCatalog.add/update kiểm tra tên trùng cả archived, chuẩn hóa khoảng trắng/Unicode/dấu/hoa thường/đ-d; thao tác lỗi không thay journal. Thêm lỗi giữ input, sửa lỗi hiển thị trong sheet giữ draft.
+- Hoạt động mới khóa vai trò thông thường bằng personalKindResolved=true; đổi icon/tên sau đó không tự chuyển sang nghỉ/thể thao/sinh hoạt. Các vai trò cũ giữ nguyên.
+- Wake chọn nghỉ theo ID/vai trò kể cả đã đổi tên thành Ngủ, không lấy mục thường có tên Nghỉ ngơi. Mục hệ thống tự tạo có tên duy nhất khi tên ưu tiên đã được dùng.
+- 150/150 checks đạt. Sáu hồi quy thêm: trùng tên/biến thể/archived/rỗng và tính nguyên tử; đổi tên trùng và giữ lịch sử; tên/icon đặc biệt của mục thường và JSON; ghi ngủ khi nghỉ đặc biệt đổi tên; tự tạo nghỉ tên không trùng; dữ liệu cũ trùng tên vẫn mở/lưu và thêm mục khác được.
+- Không áp ràng buộc duy nhất tên vào load/import; không tự xóa/gộp hoạt động và lịch sử cũ.
+
+## Cập nhật 1.15.0 — đổi tên các mục giao diện
+
+- Sửa từng mục trong Cài đặt Giao diện: TextField tên cùng bộ chọn icon, Lưu/Hủy/Mặc định. Chuẩn hóa khoảng trắng; rỗng/default xóa override. Khôi phục mỗi mục/tất cả áp dụng cả tên và icon, nhãn nút/help nêu rõ.
+- Tên mới áp dụng sidebar, menu thanh trạng thái, heading các trang và cửa sổ Cài đặt. Khi chưa tùy chỉnh, giữ tiêu đề báo cáo/Mục tiêu như cũ. Tên dài dùng truncation/tooltip cùng cỡ chữ, không dùng minimumScaleFactor.
+- Preferences.interfaceTitles tùy chọn, khóa section ổn định. Lưu Nhắc & lịch không ghi đè tên/icon mới. Tên giao diện độc lập tên các hoạt động/Entry/Goal.
+- 144/144 Core checks đạt, thêm ba ca legacy/defaults giữ icon; Unicode/khoảng trắng và JSON/SQLite round trip giữ các dữ liệu khác; reset riêng/rỗng/default và reset dữ liệu. Chưa tự động thao tác UI trực tiếp trong lượt này.
+
+## Cập nhật 1.14.4 — đồng nhất chữ Hoạt động
+
+- Bỏ lineLimit(1)/minimumScaleFactor(0.8) riêng của nhãn Hoạt động trên sidebar. Nhãn dùng cùng font kế thừa và fontWeight(.medium) như Ngày/Mục tiêu/Tổng kết; không tự thu nhỏ riêng khi bố cục chật.
+- Chỉ sửa modifier giao diện; không thêm hoặc chạy lại Core tests cho thay đổi này. Core đã đạt 141/141 checks ở 1.14.3.
+
+## Cập nhật 1.14.3 — nhóm menu và tên Hoạt động
+
+- Thanh bên: Ngày/Mục tiêu/Hoạt động, Divider, Tuần/Tháng/Năm/Tổng kết. Dùng lại các action/highlight/icon, tách helper nút kỳ để Ngày và các kỳ còn lại dùng cùng kiểu.
+- Đổi nhãn Hoạt động hàng ngày thành Hoạt động ở thanh bên/tiêu đề trang/menu thanh trạng thái/Cài đặt Giao diện. Khóa personal không đổi; thứ tự danh sách icon đi theo menu mới.
+- Không đổi lịch sử, cách ghi nhận hoặc lựa chọn icon. Thay đổi bố cục/nhãn, không thêm test mới. 141/141 Core checks đạt, gồm lưu/khôi phục icon sau thay đổi thứ tự enum.
+
+## Cập nhật 1.14.2 — phát âm khi chọn hoạt động trong Xem thử
+
+- Người dùng xác nhận: chọn trong Xem thử không có tiếng, còn Nghe thử trong Cài đặt vẫn phát được. Nguyên nhân là nhánh preview của QuickCheckInView.record đóng panel và return trước khi tới luồng phát âm; không phải âm bị cắt do panel đóng.
+- Thay nhánh đóng trực tiếp bằng AppModel.confirmPreviewCheckIn. Chỉ chạy khi có previewInterval, dừng âm nhắc, đóng panel rồi phát âm xác nhận nếu tùy chọn bật. Player tiếp tục do model giữ; không gọi perform/Engine.answer và không ghi dữ liệu.
+- Bấm Bỏ qua/đóng/timeout và luồng ghi nhận thật giữ nguyên. Core không thay đổi; 141 kiểm tra đạt ở bản trước. Chưa tự động thao tác UI trực tiếp trong lượt này.
+
+## Cập nhật 1.14.1 — âm thanh xác nhận ghi nhận nhanh
+
+- Âm ting-ting tổng hợp riêng dài 0,70 giây, WAV mono/44.100 Hz/16-bit. Kiểm tra afinfo/PCM: peak khoảng 0,433, không clipping, hai đầu về 0. Kiểm tra NSSound giải mã được file, duration đúng 0,7 giây; không phát thử ra loa ở lượt kiểm tra này.
+- AppModel.answer chỉ phát sau perform lưu thành công, chặn khoảng đã ghi/hoạt động không còn được nhắc. Trả Bool để QuickCheckInView không nhầm trạng thái lỗi cũ với kết quả lưu hiện tại. Dừng âm nhắc trước âm xác nhận; NSSound riêng giữ trong model nên đóng bảng không ngắt âm.
+- Bấm ô/Lặp lại/action SAME dùng cùng đường answer. Preview/Bỏ qua/đóng/timeout/lỗi không phát âm xác nhận; Nghe thử trong Cài đặt không ghi dữ liệu.
+- Tùy chọn checkInSuccessSound mặc định bật (nil khi journal cũ), độc lập sound của âm nhắc. Bật/tắt và Lưu cài đặt, Nghe thử phát ngay. Hai Core checks mới cho legacy defaults và lựa chọn tắt round trip JSON/SQLite/reset, giữ icon giao diện/cấu hình khác. **141/141 checks đạt**. Build release 1.14.1 (39) thành công, kiểm tra chữ ký và file WAV trong bundle trùng nguồn.
+
+## Cập nhật 1.14.0 — toàn bộ catalog icon và icon các mục giao diện
+
+- Nhúng 9.184 tên từ name_availability/symbol_order của catalog CoreGlyphs công khai macOS 26 hiện tại, cùng nhóm và từ khóa. Không nhúng ảnh, không gọi API private hay phụ thuộc tài nguyên hệ thống private lúc chạy. Nguồn hướng dẫn API/khả năng hỗ trợ: https://developer.apple.com/sf-symbols/ và https://developer.apple.com/design/human-interface-guidelines/sf-symbols .
+- Harness trực tiếp kiểm tra catalog: 9.184 tên đều được NSImage hỗ trợ trên máy, không trùng; thêm icon ngoài bộ cũ, tìm có/không dấu, SWIMMING, nhóm Mũi tên, truy vấn rỗng/không tồn tại và 22 nhóm đều có kết quả. Lần nạp đầu khoảng 3,3 giây; 100 truy vấn khoảng 2,6 giây. UI nạp nền và hiện tiến trình, lưu chuỗi chuẩn hóa để tìm kiếm.
+- Bộ chọn SwiftUI dùng chung trong Sửa hoạt động và sheet đổi icon mục giao diện; lưới lazy tám cột có tìm/lọc/preview/số lượng và cuộn về đầu khi đổi tìm/lọc. Giữ vai trò hoạt động khi lưu icon.
+- Preferences.interfaceIcons tùy chọn lưu 8 mục sidebar. Khôi phục từng mục/toàn bộ, fallback khi rỗng hoặc icon không có trên máy; bảo toàn cấu hình icon khi lưu Nhắc & lịch.
+- 139/139 Core checks đạt: thêm legacy defaults, JSON/SQLite round trip, chỉnh/reset riêng/reset toàn bộ/reset dữ liệu và bảo toàn hoạt động/cấu hình khác. Chưa kiểm tra tương tác giao diện trực tiếp trong lượt này.
+
+## Cập nhật 1.13.1 — icon thẻ tổng giờ đồng bộ với Cài đặt
+
+- Nguyên nhân: các lời gọi metric truyền icon cố định. Hàm metric dùng chung giờ lấy symbol từ hoạt động hiện tại trong model.journal; lưu Sửa hoạt động gán lại journal @Published nên SwiftUI cập nhật cả Tổng kết, Ngày, Tuần, Tháng, Năm.
+- Dùng chung cách đối chiếu tên với phần cộng giờ (bỏ khoảng trắng, không phân biệt hoa/thường/dấu). Thẻ Làm việc hỗ trợ cả Công việc và Làm việc; ưu tiên mục chưa lưu trữ, rồi mục đã lưu trữ, cuối cùng icon mặc định nếu không có mục tương ứng.
+- Giữ nguyên màu/bố cục/thứ tự thẻ và phép cộng giờ; không thay đổi schema hay dữ liệu người dùng.
+- 136/136 Core checks đạt. Bản release 1.13.1 (37) build và kiểm tra chữ ký thành công. Chưa kiểm tra tương tác giao diện trực tiếp ở lượt này.
 
 ## Cập nhật 1.13.0 — thư viện biểu tượng tìm kiếm và chia nhóm
 

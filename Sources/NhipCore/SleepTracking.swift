@@ -16,6 +16,7 @@ public struct SleepSession: Codable, Equatable, Identifiable {
     public var goalDay: String
     public var timezone: String
     public var restEntryID: UUID?
+    public var schedule: SleepSchedule? // Snapshot; legacy sessions keep the original default deadlines.
     public var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: timezone) ?? .current
@@ -27,10 +28,15 @@ public struct SleepSession: Codable, Equatable, Identifiable {
         return SleepPlan.dayKey(tomorrow, calendar: calendar)
     }
     public func deadline(for reminder: SleepReminder) -> Date? {
+        let schedule = schedule ?? SleepSchedule()
         let key = reminder.isBedtime ? goalDay : wakeGoalDay
-        guard let day = SleepTracking.date(key, calendar: calendar) else { return nil }
-        if reminder == .nightSleep { return calendar.date(byAdding: .day, value: 1, to: day) }
-        return calendar.date(bySettingHour: reminder.hour, minute: reminder.minute, second: 0, of: day)
+        guard var day = SleepTracking.date(key, calendar: calendar) else { return nil }
+        if reminder == .nightSleep && schedule.nightBedtimeIsNextDay {
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: day) else { return nil }
+            day = tomorrow
+        }
+        let minute = schedule[reminder]
+        return calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: day)
     }
     public func isOnTime(_ reminder: SleepReminder) -> Bool {
         guard reminder == kind.bedtime || reminder == kind.wake,
@@ -62,10 +68,26 @@ public enum SleepTracking {
             return $0.kind.wake == reminder && $0.wakeGoalDay == key && $0.end != nil
         }
     }
-    public static func eventTime(for reminder: SleepReminder, journal: Journal, on day: Date) -> Date? {
+    private static func preferredSession(for reminder: SleepReminder, journal: Journal, on day: Date) -> SleepSession? {
         let matching = sessions(for: reminder, journal: journal, on: day)
         let preferred = matching.filter { $0.isOnTime(reminder) }
-        return (preferred.isEmpty ? matching : preferred).compactMap { reminder.isBedtime ? $0.start : $0.end }.min()
+        return (preferred.isEmpty ? matching : preferred).min {
+            (reminder.isBedtime ? $0.start : $0.end ?? .distantFuture) < (reminder.isBedtime ? $1.start : $1.end ?? .distantFuture)
+        }
+    }
+    public static func eventTime(for reminder: SleepReminder, journal: Journal, on day: Date) -> Date? {
+        guard let session = preferredSession(for: reminder, journal: journal, on: day) else { return nil }
+        return reminder.isBedtime ? session.start : session.end
+    }
+    public static func deadlineTimeLabel(for reminder: SleepReminder, journal: Journal, on day: Date) -> String {
+        let recorded = preferredSession(for: reminder, journal: journal, on: day)
+        let active = journal.sleepHistory?.active
+        let key = SleepPlan.dayKey(day, calendar: journal.preferences.calendar)
+        let pending = active.flatMap { session -> SleepSession? in
+            reminder == session.kind.wake && session.wakeGoalDay == key ? session : nil
+        }
+        let schedule = (recorded ?? pending).map { $0.schedule ?? SleepSchedule() } ?? SleepPlan.schedule(journal)
+        return schedule.timeLabel(for: reminder)
     }
     public static func start(_ journal: inout Journal, kind: SleepKind, at now: Date) throws {
         guard now.timeIntervalSince1970.isFinite, now <= Date().addingTimeInterval(1) else { throw JournalError.invalid("Giờ đi ngủ không hợp lệ.") }
@@ -77,7 +99,8 @@ public enum SleepTracking {
         // A bedtime after midnight belongs to the previous evening, until noon.
         let day = kind == .night && calendar.component(.hour, from: now) < 12
             ? calendar.date(byAdding: .day, value: -1, to: now)! : now
-        let session = SleepSession(kind: kind, start: now, goalDay: SleepPlan.dayKey(day, calendar: calendar), timezone: calendar.timeZone.identifier)
+        var session = SleepSession(kind: kind, start: now, goalDay: SleepPlan.dayKey(day, calendar: calendar), timezone: calendar.timeZone.identifier)
+        session.schedule = SleepPlan.schedule(draft)
         history.sessions.append(session); draft.sleepHistory = history
         try Engine.validate(draft); journal = draft
     }
@@ -91,9 +114,9 @@ public enum SleepTracking {
         var history = draft.sleepHistory!
         let restID: UUID
         if let id = history.restActivityID, draft.activity(id) != nil { restID = id }
-        else if let activity = draft.activities.first(where: { $0.name == "Nghỉ ngơi" }) { restID = activity.id }
+        else if let activity = draft.activities.first(where: { PersonalTracking.kind(of: $0) == .rest }) { restID = activity.id }
         else {
-            let activity = Activity(name: "Nghỉ ngơi", color: "84A65B", symbol: "cup.and.saucer.fill", personalKind: .rest)
+            let activity = Activity(name: ActivityCatalog.availableName("Nghỉ ngơi", in: draft), color: "84A65B", symbol: "cup.and.saucer.fill", personalKind: .rest)
             draft.activities.append(activity); restID = activity.id
         }
         let entry = Entry(start: active.start, end: now, activityID: restID, note: active.kind.title, source: "sleep")
@@ -123,6 +146,7 @@ public enum SleepTracking {
         }
         let sorted = history.sessions.sorted { $0.start < $1.start }
         for (index, session) in sorted.enumerated() {
+            try session.schedule?.validate()
             guard session.start.timeIntervalSince1970.isFinite, TimeZone(identifier: session.timezone) != nil,
                   date(session.goalDay, calendar: session.calendar) != nil,
                   session.end.map({ $0.timeIntervalSince1970.isFinite && $0 > session.start }) ?? true,

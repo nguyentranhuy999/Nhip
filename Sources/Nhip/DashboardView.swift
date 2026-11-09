@@ -67,33 +67,30 @@ struct DashboardView: View {
                 VStack(alignment: .leading) { Text("Nhịp").font(.title.bold()); Text("Thời gian của bạn").font(.caption).foregroundStyle(.secondary) }
             }.padding(.bottom, 10)
             VStack(spacing: 6) {
-                ForEach(ReportPeriod.allCases) { item in
-                    Button { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = false; period = item } label: {
-                        HStack(spacing: 12) { Image(systemName: symbol(item)).frame(width: 20); Text(item.rawValue).fontWeight(.medium); Spacer() }
-                            .padding(12).background(!model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                            .foregroundStyle(!model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? .indigo : .primary)
-                    }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
-                }
+                periodSidebarButton(.day)
+                Button { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true } label: {
+                    HStack(spacing: 12) { Image(systemName: InterfaceSection.goals.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.goals.title(in: model.journal.preferences)); Spacer() }
+                        .padding(12).background(model.showGoals ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(model.showGoals ? .indigo : .primary)
+                }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
+                Button { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true } label: {
+                    HStack(spacing: 12) { Image(systemName: InterfaceSection.personal.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.personal.title(in: model.journal.preferences)); Spacer() }
+                        .padding(12).background(model.showPersonalActivities ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(model.showPersonalActivities ? .indigo : .primary)
+                }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
             }
             Divider()
             VStack(spacing: 6) {
-            Button { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true } label: {
-                HStack(spacing: 12) { Image(systemName: "sum").frame(width: 20); Text("Tổng kết").fontWeight(.medium); Spacer() }
-                    .padding(12).background(model.showAllTimeSummary ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                    .foregroundStyle(model.showAllTimeSummary ? .indigo : .primary)
-            }.buttonStyle(.plain).modifier(SidebarFocusAppearance()).help("Tổng số giờ từng hoạt động trong tất cả thời gian")
-            Button { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true } label: {
-                HStack(spacing: 12) { Image(systemName: "target").frame(width: 20); Text("Mục tiêu").fontWeight(.medium); Spacer() }
-                    .padding(12).background(model.showGoals ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                    .foregroundStyle(model.showGoals ? .indigo : .primary)
-            }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
-            Button { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true } label: {
-                HStack(spacing: 12) { Image(systemName: "figure.walk").frame(width: 20); Text("Hoạt động hàng ngày").fontWeight(.medium).lineLimit(1).minimumScaleFactor(0.8); Spacer() }
-                    .padding(12).background(model.showPersonalActivities ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                    .foregroundStyle(model.showPersonalActivities ? .indigo : .primary)
-            }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
+                ForEach([ReportPeriod.week, .month, .year]) { item in
+                    periodSidebarButton(item)
+                }
+                Button { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true } label: {
+                    HStack(spacing: 12) { Image(systemName: InterfaceSection.summary.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.summary.title(in: model.journal.preferences)); Spacer() }
+                        .padding(12).background(model.showAllTimeSummary ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                        .foregroundStyle(model.showAllTimeSummary ? .indigo : .primary)
+                }.buttonStyle(.plain).modifier(SidebarFocusAppearance()).help("Tổng số giờ từng hoạt động trong tất cả thời gian")
             }
-            Button { WindowManager.shared.showSettings() } label: { Label("Cài đặt", systemImage: "slider.horizontal.3") }.buttonStyle(.plain)
+            Button { WindowManager.shared.showSettings() } label: { Label(InterfaceSection.settings.title(in: model.journal.preferences), systemImage: InterfaceSection.settings.displaySymbol(in: model.journal.preferences)).lineLimit(1).truncationMode(.tail).help(InterfaceSection.settings.title(in: model.journal.preferences)) }.buttonStyle(.plain)
             Spacer()
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 7) { Circle().fill(model.journal.runtime.segmentStart != nil ? .green : .orange).frame(width: 7, height: 7); Text(model.status).font(.caption) }
@@ -104,6 +101,16 @@ struct DashboardView: View {
             }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 12))
             if model.demo { Text("CHẾ ĐỘ MINH HỌA").font(.caption2.bold()).foregroundStyle(.orange) }
         }.padding(22).frame(width: 235).frame(maxHeight: .infinity).background(.ultraThinMaterial)
+    }
+    private func sidebarTitle(_ title: String) -> some View {
+        Text(title).fontWeight(.medium).lineLimit(1).truncationMode(.tail).help(title)
+    }
+    private func periodSidebarButton(_ item: ReportPeriod) -> some View {
+        Button { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = false; period = item } label: {
+            HStack(spacing: 12) { Image(systemName: symbol(item)).frame(width: 20); sidebarTitle(InterfaceSection(period: item).title(in: model.journal.preferences)); Spacer() }
+                .padding(12).background(!model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(!model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? .indigo : .primary)
+        }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
     }
     private var header: some View {
         HStack(alignment: .top) {
@@ -120,6 +127,10 @@ struct DashboardView: View {
         }
     }
     private var headerTitle: String {
+        let section: InterfaceSection = model.showAllTimeSummary ? .summary : InterfaceSection(period: period)
+        if let name = section.customTitle(in: model.journal.preferences) {
+            return model.showAllTimeSummary ? name : "\(name) · \(periodValue(for: selectedDate))"
+        }
         if model.showAllTimeSummary { return "Tổng kết tất cả thời gian" }
         switch period {
         case .day: return "Một ngày của bạn"
@@ -213,41 +224,32 @@ struct DashboardView: View {
         }
     }
     private var metrics: some View {
-        // Overview totals always cover the whole selected period,
-        // independently of the activity filter used by the detailed charts.
-        let totals = Reports.summarize(model.journal, range: range).totals
+        // Keep overview totals independent of the detailed chart's activity filter.
+        let page: DashboardPage = model.showAllTimeSummary ? .summary : DashboardPage(period: period)
+        let metrics = Reports.dashboardMetrics(model.journal, range: range, page: page)
         return Group {
-            if model.showAllTimeSummary {
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 14) {
-                    metric("Học", seconds: summarySeconds(named: "Học", totals: totals), icon: "book.fill", color: .indigo)
-                    metric("Nghiên cứu", seconds: summarySeconds(named: "Nghiên cứu", totals: totals), icon: "magnifyingglass", color: .teal)
-                    metric("Làm việc", seconds: summarySeconds(named: "Công việc", totals: totals) + summarySeconds(named: "Làm việc", totals: totals), icon: "briefcase.fill", color: .blue)
-                    metric("Tập thể thao", seconds: summarySeconds(named: "Tập thể thao", totals: totals), icon: "figure.run", color: .orange)
-                    metric("Nghỉ ngơi", seconds: summarySeconds(named: "Nghỉ ngơi", totals: totals), icon: "cup.and.saucer.fill", color: Color(hex: "84A65B"))
-                    metric("Giải trí", seconds: summarySeconds(named: "Giải trí", totals: totals), icon: "gamecontroller.fill", color: .pink)
-                }
+            if metrics.isEmpty {
+                Button("Chọn hoạt động cho dashboard") {
+                    model.dashboardSettingsPage = page; WindowManager.shared.showSettings(tab: 5)
+                }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 12)
             } else {
-                HStack(spacing: 14) {
-                    metric("Học", seconds: summarySeconds(named: "Học", totals: totals), icon: "book.fill", color: .indigo)
-                    metric("Nghiên cứu", seconds: summarySeconds(named: "Nghiên cứu", totals: totals), icon: "magnifyingglass", color: .teal)
-                    metric("Tập thể thao", seconds: summarySeconds(named: "Tập thể thao", totals: totals), icon: "figure.run", color: .orange)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14), count: 3), spacing: 14) {
+                    ForEach(metrics) { item in metric(item.activity, seconds: item.seconds) }
                 }
             }
         }
     }
-    private func summarySeconds(named name: String, totals: [UUID: Double]) -> Double {
-        model.journal.activities.filter {
-            $0.name.trimmingCharacters(in: .whitespacesAndNewlines).compare(name, options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "vi_VN")) == .orderedSame
-        }.reduce(0) { $0 + totals[$1.id, default: 0] }
-    }
-    private func metric(_ title: String, seconds: Double, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: icon).font(.callout).foregroundStyle(color)
+    private func metric(_ activity: Activity, seconds: Double) -> some View {
+        let color = Color(hex: activity.color)
+        return VStack(alignment: .leading, spacing: 12) {
+            Label(activity.name, systemImage: activity.symbol).font(.callout).foregroundStyle(color)
+                .lineLimit(1).truncationMode(.tail)
             Text("\(seconds / 3600, format: .number.precision(.fractionLength(2))) giờ")
                 .font(.system(size: 24, weight: .semibold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.65)
             Text(durationText(seconds)).font(.caption).foregroundStyle(.secondary)
+            if activity.archived { Text("Đã lưu trữ").font(.caption2).foregroundStyle(.secondary) }
         }.padding(18).frame(maxWidth: .infinity, alignment: .leading).background(color.opacity(0.07), in: RoundedRectangle(cornerRadius: 16))
-            .help(model.showAllTimeSummary ? "Tổng thời gian \(title.lowercased()) trong toàn bộ lịch sử" : "Tổng thời gian \(title.lowercased()) trong kỳ \(period.rawValue.lowercased()) đang xem")
+            .help(model.showAllTimeSummary ? "Tổng thời gian \(activity.name.lowercased()) trong toàn bộ lịch sử" : "Tổng thời gian \(activity.name.lowercased()) trong kỳ \(period.rawValue.lowercased()) đang xem")
     }
     private var allTimeContent: some View {
         let summary = report
@@ -525,7 +527,11 @@ struct DashboardView: View {
             }.chartYAxisLabel("Giờ / ngày lịch").frame(height: 170)
         }
     }
-    private func symbol(_ p: ReportPeriod) -> String { switch p { case .day: return "sun.max"; case .week: return "calendar"; case .month: return "square.grid.3x3"; case .year: return "chart.xyaxis.line" } }
+    private func symbol(_ p: ReportPeriod) -> String {
+        let section: InterfaceSection
+        switch p { case .day: section = .day; case .week: section = .week; case .month: section = .month; case .year: section = .year }
+        return section.displaySymbol(in: model.journal.preferences)
+    }
     private func move(_ direction: Int) { selectedDate = PeriodNavigation.move(period, from: selectedDate, by: direction, calendar: calendar) }
     private func dayCount(_ range: DateInterval) -> Double { max(1, Double(calendar.dateComponents([.day], from: range.start, to: range.end).day ?? 1) + (calendar.startOfDay(for: range.end) < range.end ? 1 : 0)) }
 }

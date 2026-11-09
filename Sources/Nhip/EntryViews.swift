@@ -92,9 +92,12 @@ struct QuickCheckInView: View {
             .onDisappear { note = ""; showNote = false }
     }
     private func record(_ span: Span, id: UUID) {
-        if model.previewInterval != nil { note = ""; WindowManager.shared.quick?.close(); return }
-        model.answer(span, activityID: id, note: note)
-        if model.error == nil { note = ""; WindowManager.shared.quick?.close() }
+        if model.previewInterval != nil {
+            note = ""; model.confirmPreviewCheckIn(); return
+        }
+        if model.answer(span, activityID: id, note: note) {
+            note = ""; WindowManager.shared.quick?.close()
+        }
     }
 }
 

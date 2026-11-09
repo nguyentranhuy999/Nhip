@@ -12,9 +12,9 @@ import NhipCore
                 Label(model.status, systemImage: model.journal.runtime.enabled ? "record.circle" : "pause.circle").foregroundStyle(.secondary)
                 if let next = model.journal.runtime.nextDue { Text("Nhắc tiếp: \(model.time(next))").font(.caption) }
                 Divider()
-                Button("Tổng kết tất cả thời gian") { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true; WindowManager.shared.showDashboard() }
-                Button("Mục tiêu") { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true; WindowManager.shared.showDashboard() }
-                Button("Hoạt động hàng ngày") { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true; WindowManager.shared.showDashboard() }
+                Button(InterfaceSection.summary.customTitle(in: model.journal.preferences) ?? "Tổng kết tất cả thời gian") { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true; WindowManager.shared.showDashboard() }
+                Button(InterfaceSection.goals.title(in: model.journal.preferences)) { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true; WindowManager.shared.showDashboard() }
+                Button(InterfaceSection.personal.title(in: model.journal.preferences)) { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true; WindowManager.shared.showDashboard() }
                 Button("Dashboard") { WindowManager.shared.showDashboard() }.keyboardShortcut("d")
                 Divider()
                 Button("Bắt đầu / Tiếp tục") { model.start() }
@@ -22,7 +22,7 @@ import NhipCore
                     ForEach([15,30,60], id: \.self) { minutes in Button("\(minutes) phút") { model.pause(minutes) } }
                     Button("Đến khi bật lại") { model.pause() }
                 }
-                Button("Cài đặt…") { WindowManager.shared.showSettings() }
+                Button(InterfaceSection.settings.title(in: model.journal.preferences) + "…") { WindowManager.shared.showSettings() }
                 Divider()
                 Button("Thoát Nhịp") { NSApp.terminate(nil) }.keyboardShortcut("q")
             }.padding(18).frame(width: 270)
@@ -103,6 +103,7 @@ import NhipCore
     func showSettings(tab: Int? = nil) {
         if let tab { AppModel.shared.settingsTab = tab }
         if settings == nil { settings = makeWindow(title: "Cài đặt Nhịp", size: NSSize(width: 780, height: 720), view: PreferencesView(model: .shared), resizable: true) }
+        settings?.title = "\(InterfaceSection.settings.title(in: AppModel.shared.journal.preferences)) Nhịp"
         reveal(settings!)
     }
     private func makeWindow<V: View>(title: String, size: NSSize, view: V, resizable: Bool) -> NSWindow {

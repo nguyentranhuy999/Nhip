@@ -15,6 +15,11 @@ public struct Report {
     public var manualOutside: Double { max(0, total - classifiedTracked) }
     public var coverage: Double? { tracked > 0 ? classifiedTracked / tracked : nil }
 }
+public struct ActivityMetric: Identifiable {
+    public var activity: Activity
+    public var seconds: Double
+    public var id: UUID { activity.id }
+}
 public struct ChartPoint: Identifiable {
     public var id: String { "\(date.timeIntervalSince1970)-\(activityID)" }
     public var date: Date
@@ -100,6 +105,21 @@ public enum Reports {
             }
         }
         return Report(range: range, totals: totals, tracked: spans.reduce(0) { $0 + overlap($1.start, $1.end, range.start, range.end) }, classifiedTracked: classified)
+    }
+    public static func activityMetrics(_ journal: Journal, range: DateInterval) -> [ActivityMetric] {
+        let totals = summarize(journal, range: range).totals
+        return journal.activities.compactMap { activity in
+            let seconds = totals[activity.id, default: 0]
+            guard !activity.archived || seconds > 0 else { return nil }
+            return ActivityMetric(activity: activity, seconds: seconds)
+        }
+    }
+    public static func dashboardMetrics(_ journal: Journal, range: DateInterval, page: DashboardPage) -> [ActivityMetric] {
+        let totals = summarize(journal, range: range).totals
+        return DashboardSelection.selectedIDs(for: page, journal: journal).compactMap { id in
+            guard let activity = journal.activity(id) else { return nil }
+            return ActivityMetric(activity: activity, seconds: totals[id, default: 0])
+        }
     }
     public static func points(_ j: Journal, range: DateInterval, period: ReportPeriod, activityID: UUID?) -> [ChartPoint] {
         let calendar = j.preferences.calendar

@@ -25,7 +25,7 @@ struct GoalsView: View {
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Mục tiêu mỗi ngày").font(.system(size: 29, weight: .bold, design: .rounded))
+                    Text(InterfaceSection.goals.customTitle(in: model.journal.preferences) ?? "Mục tiêu mỗi ngày").font(.system(size: 29, weight: .bold, design: .rounded))
                 }
                 if let message {
                     HStack {
@@ -80,7 +80,7 @@ struct GoalsView: View {
             Label(reminder.title, systemImage: reminder.symbol).font(.headline).foregroundStyle(.indigo)
             Spacer()
             if let event { Text(model.time(event)).monospacedDigit().font(.callout).foregroundStyle(.secondary) }
-            Text("≤ \(reminder.timeLabel)").monospacedDigit().font(.headline)
+            Text("≤ \(SleepTracking.deadlineTimeLabel(for: reminder, journal: model.journal, on: now))").monospacedDigit().font(.headline)
             Text(complete ? "Đúng giờ" : (event != nil ? "Muộn" : "Chưa ghi nhận")).font(.callout)
                 .foregroundStyle(complete ? .green : (event != nil ? .orange : .secondary)).frame(width: 120, alignment: .trailing)
         }.padding(16).background(.indigo.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))

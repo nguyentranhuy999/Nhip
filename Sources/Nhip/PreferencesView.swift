@@ -5,16 +5,20 @@ struct PreferencesView: View {
     @ObservedObject var model: AppModel
     @State private var userName = ""
     @State private var preferences = Preferences()
+    @State private var sleepSchedule = SleepSchedule()
+    @State private var sleepScheduleError: String?
     @State private var newName = ""
+    @State private var newActivityError: String?
     @State private var categoryEditor: Activity?
+    @State private var interfaceIconEditor: InterfaceSection?
     @State private var timezone = ""
     @State private var validationError: String?
     private let dayNames = ["", "Chủ nhật", "Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy"]
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Cài đặt Nhịp").font(.title.bold())
+            Text("\(InterfaceSection.settings.title(in: model.journal.preferences)) Nhịp").font(.title.bold())
             Picker("Nhóm cài đặt", selection: $model.settingsTab) {
-                Text("Cá nhân").tag(3); Text("Nhắc & lịch").tag(0); Text("Hoạt động").tag(1); Text("Dữ liệu").tag(2)
+                Text("Cá nhân").tag(3); Text("Nhắc & lịch").tag(0); Text("Hoạt động").tag(1); Text("Giao diện").tag(4); Text("Dashboard").tag(5); Text("Dữ liệu").tag(2)
             }.pickerStyle(.segmented)
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
@@ -22,14 +26,45 @@ struct PreferencesView: View {
                     case 0: reminderSettings
                     case 1: categories
                     case 3: profileSettings
+                    case 4: interfaceSettings
+                    case 5: DashboardSettingsView(model: model)
                     default: dataSettings
                     }
                 }.padding(2)
             }
         }.padding(24)
-            .onAppear { preferences = model.journal.preferences; timezone = preferences.timezone; userName = model.userName; model.refreshAuthorization() }
+            .onAppear { preferences = model.journal.preferences; timezone = preferences.timezone; userName = model.userName; sleepSchedule = SleepPlan.schedule(model.journal); model.refreshAuthorization() }
+            .onChange(of: model.journal.sleepReminders?.schedule) { _ in sleepSchedule = SleepPlan.schedule(model.journal) }
+            .onChange(of: sleepSchedule) { _ in sleepScheduleError = nil }
+            .onChange(of: model.journal.preferences.interfaceTitles) { _ in
+                WindowManager.shared.settings?.title = "\(InterfaceSection.settings.title(in: model.journal.preferences)) Nhịp"
+            }
             .sheet(item: $categoryEditor) { activity in CategoryEditor(model: model, activity: activity) }
+            .sheet(item: $interfaceIconEditor) { section in InterfaceIconEditor(model: model, section: section) }
             .modifier(FeedbackModifier(model: model))
+    }
+    private var interfaceSettings: some View {
+        Card(title: "Các mục giao diện") {
+            ForEach(InterfaceSection.allCases) { section in
+                HStack(spacing: 12) {
+                    Label(section.title(in: model.journal.preferences), systemImage: section.displaySymbol(in: model.journal.preferences))
+                        .lineLimit(1).truncationMode(.tail).help(section.title(in: model.journal.preferences))
+                    Spacer()
+                    Button("Sửa") { interfaceIconEditor = section }
+                        .accessibilityLabel("Sửa mục \(section.title)")
+                    Button {
+                        model.perform { section.setTitle(nil, in: &$0.preferences); section.setSymbol(nil, in: &$0.preferences) }
+                    } label: { Image(systemName: "arrow.counterclockwise") }
+                        .accessibilityLabel("Khôi phục tên và biểu tượng mục \(section.title)")
+                        .help("Khôi phục tên và biểu tượng mặc định")
+                        .disabled(model.journal.preferences.interfaceIcons?[section.rawValue] == nil && model.journal.preferences.interfaceTitles?[section.rawValue] == nil)
+                }.padding(.vertical, 5)
+            }
+            Divider()
+            Button("Khôi phục tất cả mục về mặc định") {
+                model.perform { $0.preferences.interfaceIcons = nil; $0.preferences.interfaceTitles = nil }
+            }.disabled(model.journal.preferences.interfaceIcons?.isEmpty != false && model.journal.preferences.interfaceTitles?.isEmpty != false)
+        }
     }
     private var profileSettings: some View {
         Card(title: "Thông tin cá nhân") {
@@ -55,8 +90,15 @@ struct PreferencesView: View {
                         HStack {
                             Label(reminder.title, systemImage: reminder.symbol)
                             Spacer()
-                            Text(reminder.timeLabel).monospacedDigit()
+                            sleepTimePicker(reminder)
                         }
+                    }
+                    if let sleepScheduleError { Text(sleepScheduleError).font(.callout).foregroundStyle(.red) }
+                    HStack {
+                        Button("Lưu giờ nhắc") { saveSleepSchedule() }.buttonStyle(.borderedProminent).tint(.indigo)
+                            .disabled(sleepSchedule == SleepPlan.schedule(model.journal))
+                        Button("Giờ mặc định") { sleepSchedule = SleepSchedule() }
+                            .disabled(sleepSchedule == SleepSchedule())
                     }
                     HStack {
                         Button("Thử lời nhắc ngủ") { model.previewSleepReminder() }
@@ -71,6 +113,15 @@ struct PreferencesView: View {
             Card(title: "Chu kỳ ghi nhận") {
                 Picker("Nhắc sau mỗi", selection: $preferences.intervalMinutes) { ForEach([5,10,15,30,60], id: \.self) { Text("\($0) phút").tag($0) } }.frame(maxWidth: 330)
                 Toggle("Phát âm báo", isOn: $preferences.sound)
+                HStack {
+                    Toggle("Âm thanh khi ghi nhận thành công", isOn: Binding(
+                        get: { preferences.isCheckInSuccessSoundEnabled },
+                        set: { preferences.checkInSuccessSound = $0 }
+                    ))
+                    Spacer()
+                    Button("Nghe thử") { model.previewCheckInSuccessSound() }
+                        .accessibilityLabel("Nghe thử âm thanh ghi nhận thành công")
+                }
                 Button("Xem thử bảng nhắc nhanh") { model.previewReminder() }
                 HStack {
                     Text("Banner macOS (tùy chọn): \(authorizationText)").foregroundStyle(.secondary)
@@ -103,6 +154,25 @@ struct PreferencesView: View {
                 if let notice = model.notice { Text(notice).font(.caption).foregroundStyle(.secondary) }
             }
         }
+    }
+    private func sleepTimePicker(_ reminder: SleepReminder) -> some View {
+        let calendar = preferences.calendar
+        return DatePicker(reminder.title, selection: Binding(get: {
+            let minute = sleepSchedule[reminder]
+            // A fixed ordinary date avoids editing a nonexistent hour on a DST transition day.
+            return calendar.date(from: DateComponents(year: 2001, month: 1, day: 15, hour: minute / 60, minute: minute % 60))!
+        }, set: { date in
+            sleepSchedule[reminder] = calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date)
+        }), displayedComponents: .hourAndMinute)
+            .labelsHidden().frame(width: 100)
+            .environment(\.calendar, calendar).environment(\.timeZone, calendar.timeZone)
+            .accessibilityLabel("Giờ nhắc \(reminder.title.lowercased())")
+    }
+    private func saveSleepSchedule() {
+        do {
+            try sleepSchedule.validate()
+            if model.perform({ try SleepPlan.setSchedule(sleepSchedule, journal: &$0) }) { sleepScheduleError = nil }
+        } catch { sleepScheduleError = error.localizedDescription }
     }
     private func minutePicker(_ title: String, value: Binding<Int>) -> some View {
         HStack(spacing: 3) {
@@ -155,13 +225,19 @@ struct PreferencesView: View {
             Divider()
             HStack {
                 TextField("Tên hoạt động mới", text: $newName).textFieldStyle(.roundedBorder)
-                Button("Thêm") {
-                    let name = newName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !name.isEmpty else { return }
-                    model.perform { $0.activities.append(Activity(name: name, color: "6366F1")) }; newName = ""
-                }.disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .onChange(of: newName) { _ in newActivityError = nil }
+                Button("Thêm") { addActivity() }
+                    .disabled(newName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+            if let newActivityError { Text(newActivityError).font(.callout).foregroundStyle(.red) }
         }
+    }
+    private func addActivity() {
+        var candidate = model.journal
+        do {
+            try ActivityCatalog.add(&candidate, name: newName)
+            if model.perform({ $0 = candidate }) { newName = ""; newActivityError = nil }
+        } catch { newActivityError = error.localizedDescription }
     }
     private var dataSettings: some View {
         Card(title: "Dữ liệu nằm trên máy của bạn") {
@@ -183,9 +259,16 @@ struct PreferencesView: View {
     }
     private func savePreferences() {
         preferences.timezone = timezone.trimmingCharacters(in: .whitespacesAndNewlines)
+        preferences.interfaceIcons = model.journal.preferences.interfaceIcons
+        preferences.interfaceTitles = model.journal.preferences.interfaceTitles
+        preferences.dashboardActivities = model.journal.preferences.dashboardActivities
         var draft = model.journal; draft.preferences = preferences
-        do { try Engine.validate(draft); model.updatePreferences(preferences); validationError = nil; model.notice = "Đã lưu cài đặt." }
-        catch { validationError = error.localizedDescription }
+        do {
+            try SleepPlan.setSchedule(sleepSchedule, journal: &draft)
+            try Engine.validate(draft)
+            model.updatePreferences(preferences, sleepSchedule: sleepSchedule)
+            validationError = nil; model.notice = "Đã lưu cài đặt."
+        } catch { validationError = error.localizedDescription }
     }
     private func moveCategory(_ index: Int, _ direction: Int) { model.perform { $0.activities.swapAt(index, index + direction) } }
 }
@@ -193,70 +276,32 @@ struct PreferencesView: View {
 struct CategoryEditor: View {
     @ObservedObject var model: AppModel
     @State var activity: Activity
-    @State private var symbolQuery = ""
-    @State private var symbolGroup: ActivitySymbolGroup = .all
+    @State private var validationError: String?
     @Environment(\.dismiss) private var dismiss
-    private var symbols: [ActivitySymbol] { ActivitySymbols.matching(symbolQuery, group: symbolGroup) }
     let colors = ["6366F1", "0EA5A4", "F59E0B", "EC4899", "3B82F6", "A78BFA", "84A65B", "EF4444", "94A3B8"]
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Sửa hoạt động").font(.title2.bold())
             TextField("Tên", text: $activity.name).textFieldStyle(.roundedBorder)
+                .onChange(of: activity.name) { _ in validationError = nil }
             Toggle("Hoạt động ưu tiên", isOn: Binding(get: { activity.isPriority == true }, set: { activity.isPriority = $0 }))
             HStack { ForEach(colors, id: \.self) { color in Button { activity.color = color } label: { Circle().fill(Color(hex: color)).frame(width: 28, height: 28).overlay(Circle().stroke(activity.color == color ? Color.primary : .clear, lineWidth: 2).padding(-3)) }.buttonStyle(.plain).accessibilityLabel("Màu \(color)") } }
-            symbolPicker
-            HStack { Spacer(); Button("Hủy") { dismiss() }.keyboardShortcut(.cancelAction); Button("Lưu") {
-                activity.name = activity.name.trimmingCharacters(in: .whitespacesAndNewlines)
-                if model.perform({ journal in
-                    guard let index = journal.activities.firstIndex(where: { $0.id == activity.id }) else {
-                        throw JournalError.invalid("Không tìm thấy hoạt động để sửa.")
-                    }
-                    var updated = activity
-                    PersonalTracking.preserveRole(of: journal.activities[index], in: &updated)
-                    journal.activities[index] = updated
-                }) { dismiss() }
-            }.buttonStyle(.borderedProminent).disabled(activity.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
+            SymbolPicker(selection: $activity.symbol, tint: Color(hex: activity.color))
+            if let validationError { Text(validationError).font(.callout).foregroundStyle(.red) }
+            HStack {
+                Spacer()
+                Button("Hủy") { dismiss() }.keyboardShortcut(.cancelAction)
+                Button("Lưu") { save() }.buttonStyle(.borderedProminent)
+                    .disabled(activity.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
         }.padding(24).frame(width: 620)
     }
-    private var symbolPicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Text("Biểu tượng").font(.headline)
-                Spacer()
-                Image(systemName: activity.symbol).foregroundStyle(Color(hex: activity.color))
-                Text(ActivitySymbols.all.first { $0.name == activity.symbol }?.title ?? "Hiện tại")
-                    .font(.callout).foregroundStyle(.secondary)
-            }
-            HStack(spacing: 10) {
-                TextField("Tìm biểu tượng", text: $symbolQuery).textFieldStyle(.roundedBorder).accessibilityLabel("Tìm biểu tượng")
-                if !symbolQuery.isEmpty {
-                    Button { symbolQuery = "" } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.borderless).accessibilityLabel("Xóa tìm kiếm")
-                }
-                Picker("Nhóm biểu tượng", selection: $symbolGroup) {
-                    ForEach(ActivitySymbolGroup.allCases) { group in Text(group.title).tag(group) }
-                }.labelsHidden().frame(width: 160).accessibilityLabel("Nhóm biểu tượng")
-            }
-            Text("\(symbols.count) biểu tượng").font(.caption).foregroundStyle(.secondary)
-            ScrollView {
-                if symbols.isEmpty {
-                    Text("Không tìm thấy biểu tượng").foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 200)
-                } else {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 8), spacing: 8) {
-                        ForEach(symbols) { symbol in
-                            Button { activity.symbol = symbol.name } label: {
-                                Image(systemName: symbol.name).font(.system(size: 20))
-                                    .frame(maxWidth: .infinity).frame(height: 44)
-                                    .foregroundStyle(activity.symbol == symbol.name ? Color(hex: activity.color) : Color.primary)
-                                    .background(activity.symbol == symbol.name ? Color(hex: activity.color).opacity(0.15) : Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 9))
-                                    .overlay(RoundedRectangle(cornerRadius: 9).stroke(activity.symbol == symbol.name ? Color(hex: activity.color) : .clear, lineWidth: 1.5))
-                            }.buttonStyle(.plain).help(symbol.title).accessibilityLabel("Biểu tượng \(symbol.title)")
-                                .accessibilityValue(activity.symbol == symbol.name ? "Đang chọn" : "")
-                        }
-                    }.padding(3)
-                }
-            }.frame(height: 230)
-        }
+    private func save() {
+        var candidate = model.journal
+        do {
+            try ActivityCatalog.update(&candidate, activity: activity)
+            if model.perform({ $0 = candidate }) { dismiss() }
+            else { validationError = model.error ?? "Không thể lưu thay đổi." }
+        } catch { validationError = error.localizedDescription }
     }
 }

@@ -90,7 +90,7 @@ public enum PersonalTracking {
         let activity: Activity
         if let existing = matching.first(where: { !$0.archived }) ?? matching.first { activity = existing }
         else {
-            activity = Activity(name: kind.title, color: kind.color, symbol: kind.symbol, personalKind: kind)
+            activity = Activity(name: ActivityCatalog.availableName(kind.title, in: draft), color: kind.color, symbol: kind.symbol, personalKind: kind)
             draft.activities.append(activity)
         }
         return try start(&draft, activityID: activity.id, at: now, committingTo: &journal)
