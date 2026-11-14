@@ -31,12 +31,37 @@ public struct SleepCompletion: Codable, Equatable {
 public struct SleepReminderState: Codable, Equatable {
     public var enabled = true
     public var completions: [SleepCompletion] = []
+    public var initialCompletions: [SleepCompletion]? // Passed deadlines on the first/reset day only.
     public var statisticsStartDay: String?
     public var schedule: SleepSchedule?
     public init() {}
 }
 
 public enum SleepPlan {
+    /// Invoked only for a genuinely new store or an explicit reset, never on reopen.
+    public static func initializeFirstDay(journal: inout Journal, on now: Date = Date()) {
+        guard isEnabled(journal), now.timeIntervalSince1970.isFinite,
+              journal.sleepReminders?.statisticsStartDay == nil, journal.sleepReminders?.initialCompletions == nil,
+              journal.entries.isEmpty, journal.intervals.isEmpty, journal.goals.isEmpty,
+              journal.sleepHistory?.sessions.isEmpty ?? true, journal.personalHistory?.sessions.isEmpty ?? true,
+              journal.sleepReminders?.completions.isEmpty ?? true else { return }
+        let calendar = journal.preferences.calendar, day = calendar.startOfDay(for: now)
+        let schedule = schedule(journal), key = dayKey(day, calendar: calendar)
+        var state = journal.sleepReminders ?? SleepReminderState()
+        state.statisticsStartDay = key
+        state.initialCompletions = SleepReminder.allCases.compactMap { reminder in
+            let goalDay = reminder == .nightSleep && schedule.nightBedtimeIsNextDay
+                ? calendar.date(byAdding: .day, value: 1, to: day)! : day
+            let minute = schedule[reminder]
+            guard let deadline = calendar.date(bySettingHour: minute / 60, minute: minute % 60, second: 0, of: goalDay),
+                  deadline <= now else { return nil }
+            return SleepCompletion(reminder: reminder, day: key)
+        }
+        journal.sleepReminders = state
+    }
+    public static func isInitiallyComplete(_ reminder: SleepReminder, journal: Journal, on date: Date) -> Bool {
+        journal.sleepReminders?.initialCompletions?.contains(SleepCompletion(reminder: reminder, day: dayKey(date, calendar: journal.preferences.calendar))) ?? false
+    }
     /// Persist the first known day so unrecorded days are still counted tomorrow.
     public static func prepareStatistics(journal: inout Journal, on now: Date = Date()) {
         guard isEnabled(journal) else { return }
@@ -77,6 +102,7 @@ public enum SleepPlan {
         return String(format: "%04d-%02d-%02d", d.year!, d.month!, d.day!)
     }
     public static func isComplete(_ reminder: SleepReminder, journal: Journal, on date: Date) -> Bool {
+        if isInitiallyComplete(reminder, journal: journal, on: date) { return true }
         let sessions = SleepTracking.sessions(for: reminder, journal: journal, on: date)
         if !sessions.isEmpty { return sessions.contains { $0.isOnTime(reminder) } }
         return journal.sleepReminders?.completions.contains(SleepCompletion(reminder: reminder, day: dayKey(date, calendar: journal.preferences.calendar))) ?? false
@@ -105,11 +131,19 @@ public enum SleepPlan {
                 throw JournalError.invalid("Ngày bắt đầu thống kê nhiệm vụ ngủ không hợp lệ.")
             }
         }
-        for completion in state.completions {
+        if let initial = state.initialCompletions {
+            guard let firstDay = state.statisticsStartDay, initial.allSatisfy({ $0.day == firstDay }) else {
+                throw JournalError.invalid("Nhiệm vụ ngủ tự hoàn thành phải thuộc ngày bắt đầu dữ liệu.")
+            }
+        }
+        for list in [state.completions, state.initialCompletions ?? []] {
+        keys.removeAll()
+        for completion in list {
             guard let date = formatter.date(from: completion.day), formatter.string(from: date) == completion.day,
                   keys.insert(completion.day + "/" + completion.reminder.rawValue).inserted else {
                 throw JournalError.invalid("Dữ liệu mục tiêu ngủ không hợp lệ hoặc bị trùng.")
             }
+        }
         }
     }
 }

@@ -1,5 +1,56 @@
-# Kiểm tra bản 1.0–1.18.0
+# Kiểm tra bản 1.0–1.22.3
 
+
+## Cập nhật 1.22.3 — thu gọn thẻ nhiệm vụ/deadline
+
+- Ba ô trong một hàng: nhiệm vụ ngày, nhiệm vụ tuần, tổng deadline. Số 26 pt, padding 14, spacing 6; phần trăm gộp thành một dòng; giữ progress bar và Xem chi tiết. Card deadline riêng được gỡ, các phần khác của Tổng kết giữ thứ tự.
+- Dùng trực tiếp GoalReports.completionSummary và journal.deadlines.count như trước. Kiểm tra build release và chữ ký .app cho thay đổi SwiftUI; không thay đổi Core/model.
+
+## Cập nhật 1.22.2 — mẫu deadline 15 phút
+
+- Deadlines.sampleInterval 900 giây, chốt slot từ createdAt (không theo giờ tròn). DeadlineSample là snapshot trong bộ nhớ của plan/mốc/tổng giờ từng ID, giữ trong DeadlineCard bằng State và tái sử dụng qua previousSample khi slot không đổi. Input ghi trễ không làm thay đổi mẫu hiện tại; actual/progress vẫn cập nhật từ entry mới.
+- Average/projection/required dùng thời điểm và số giờ ở slot; thông tin footer hiện giờ mẫu/slot kế tiếp. Mở lại hoặc nghỉ dài dựng slot gần nhất; thay đổi plan làm vô hiệu sample nhưng giữ lịch tạo. Hạn đã đến chốt actual chính xác, không dùng cache dự báo, không hiện average nếu tổng quan sát dưới 15 phút. Không đổi model/schema journal.
+- **250/250 checks đạt**, gồm 5 kiểm tra mới: slot dựa theo thời điểm tạo và ranh giới 899/900/1799/1800 giây, sau offline lấy slot gần nhất; ghi nhận trễ chỉ đổi actual và vào mẫu kế; projection/required giữ nguyên giữa slot; deadline dưới 15 phút vẫn có kết quả cuối và không ngoại suy average ngắn; sửa plan làm mới mẫu và giữ nhịp. Kiểm tra cold-start cũ cập nhật ngưỡng từ 1 sang 15 phút; các hồi quy còn lại tiếp tục đạt.
+
+## Cập nhật 1.22.1 — thứ tự menu và số deadline trên Tổng kết
+
+- Sidebar: Ngày → Hoạt động → Mục tiêu → Deadline phía trên divider; nhóm dưới không đổi. Menu bar và InterfaceSection.allCases đồng bộ thứ tự ba mục. Raw keys và metadata người dùng giữ nguyên.
+- Thẻ Tổng số deadline nằm dưới Nhiệm vụ đã hoàn thành, lấy số kế hoạch đang lưu (nil = 0), không phải số hoạt động hoặc số kế hoạch đã hoàn thành; bao gồm cả còn hạn và hết hạn. Xem chi tiết chuyển đúng sang trang Deadline. Dùng biểu tượng mục Deadline hiện tại theo cài đặt.
+- Bộ hồi quy hiện có **245/245 checks đạt**. Kiểm tra build release để xác nhận SwiftUI và các nhánh điều hướng biên dịch.
+
+## Cập nhật 1.22.0 — deadline và dự báo theo từng hoạt động
+
+- Core Deadlines.swift: model Codable tuỳ chọn, CRUD nguyên tử, validate entry targets/dates, createdAt bất biến và khoá expired update tại transaction. forecast tính từ timestamp tạo, gồm ngày trống, cắt observation/current/deadline, dự báo theo elapsed 24 giờ và không dùng giờ sau hạn. Cảnh báo từng hoạt động, không cộng bù giữa các mục.
+- DeadlinesView: sidebar dưới Mục tiêu, menu bar, icon/tên chỉnh được trong Giao diện. Editor chọn nhiều hoạt động và giờ, countdown TimelineView riêng 1 giây, forecast 30 giây/journal updates, status/thiếu giờ/mức cần mỗi ngày và nhãn sample ban đầu. Không thêm OS notification. Hạn qua không sửa được; xoá có xác nhận và không ảnh hưởng nhật ký/thống kê mục tiêu ngày/tuần.
+- **245/245 checks đạt**, gồm 17 kiểm tra mới: CRUD/input nguyên tử; dự báo pace 2 giờ/ngày; ngày trống; cảnh báo từng mục dù tổng dư; clipping lúc tạo/đến hạn; loại dữ liệu ngoài cửa sổ; phút đầu/không chia 0; đủ từng target; kết quả expired; recording sources/rename/archive; sửa giữ createdAt; xoá giữ entry/goal/summary; JSON/SQLite/legacy; reset; reject dữ liệu hỏng; HistoryProtection deadline; DST elapsed. Các hồi quy trước tiếp tục đạt.
+
+## Cập nhật 1.21.0 — dấu hoàn thành nhiệm vụ ngủ trong ngày khởi tạo
+
+- Repository.load(at:) chỉ gọi initializeFirstDay khi chưa có hàng journal; Journal.reset gọi cùng hàm sau khi tạo dữ liệu mặc định. Không migrate dữ liệu đã lưu. Lưu initialCompletions tuỳ chọn theo statisticsStartDay, snapshot các deadline đã qua theo SleepSchedule/calendar; ngủ đêm sau nửa đêm dùng ngày kế tiếp của ngày mục tiêu.
+- Dấu ban đầu ưu tiên hơn phiên ngủ thực tế muộn trong cả isComplete và completionSummary, không tạo entry/rest hoặc thay đổi thời lượng. Giao diện hiện Hoàn thành thay cho Đúng giờ với các dấu này. validate kiểm tra ngày, trùng và baseline; HistoryProtection bảo vệ dấu ban đầu khi qua ngày.
+- **228/228 checks đạt**, gồm 10 trường hợp mới: store mới 14:00 được 3/4 và lưu/mở lại JSON/SQLite; reset sạch và bốn nhiệm vụ đúng ngày; ranh giới trước/đúng giờ và deadline ngủ đêm; lịch tuỳ chỉnh trước/sau nửa đêm; không lặp khi mở lại/qua ngày; ngủ thực tế muộn vẫn giữ dấu ban đầu và chỉ có giờ nghỉ thực tế; bật/tắt và đổi lịch không đổi snapshot; dữ liệu cũ không tự tích; dữ liệu initial sai bị từ chối và khoá lịch sử; múi giờ/DST/qua năm. Các hồi quy trước giữ nguyên và tiếp tục đạt.
+
+## Cập nhật 1.20.0 — khoá lịch sử ngày đã qua
+
+- HistoryProtection.validateChange kiểm tra transition giữa dữ liệu đã lưu và draft tại transaction AppModel.perform/undo; đối chiếu bản ghi cũ, các mức mục tiêu ngày/tuần tại mốc phiên bản, phiên ngủ/hoạt động và dấu ngủ legacy. Dữ liệu cũ không bị migration hay tính lại vì thêm khoá. Import/reset toàn bộ dùng hộp xác nhận hiện có và đường thay thế riêng.
+- Giao diện Mục tiêu ẩn biểu mẫu và nút xoá/hoàn tác cho ngày đã kết thúc; ngày tương lai vẫn đặt riêng. Ngày/Hoạt động/Ngủ thay nút sửa/xoá bằng khoá. Editor cũ khoá bản ghi, kiểm tra lại ngay khi commit để không lọt qua nửa đêm. Đã sửa tránh tự đóng editor nếu xoá/lưu bị từ chối.
+- Phiên active qua đêm được kết thúc với giờ bắt đầu bất biến và bản ghi liên kết đúng nguồn; không được huỷ hoặc sửa dữ liệu đầu ngày đã qua. Check-in vắt nửa đêm cho trả lời trong 60 giây, thông báo trước nửa đêm hoặc hết hạn không ghi bù. Bản ghi qua đêm đã đóng khoá cả khoảng.
+- **218/218 checks đạt**, gồm 17 kiểm tra mới: mục tiêu ngày cũ và hôm nay/tương lai; editor/undo qua nửa đêm; split legacy hợp lệ; thêm/sửa/xoá hôm nay; chặn thêm/sửa/xoá/đổi loại/ghi chú lịch sử; không backdate cùng ID; thay thế không được cắt bản ghi qua đêm; ngủ/hoạt động qua đêm kết thúc hợp lệ; bất biến giờ bắt đầu; chặn huỷ active cũ; check-in trước/vắt nửa đêm và hết hạn; đổi metadata/cài đặt không ảnh hưởng lịch sử; DST/múi giờ; khoá tuần hoàn tất; SQLite/JSON và thống kê; dấu ngủ legacy.
+
+## Cập nhật 1.19.0 — nhiệm vụ riêng theo ngày
+
+- GoalsView có selectedDate, DatePicker theo calendar/timezone báo cáo, mũi tên ±1 ngày và Hôm nay. Biểu mẫu, số giờ đang sửa, danh sách nhiệm vụ, tiến độ và mốc ngủ đều theo ngày chọn. Thông báo thao tác/hoàn tác không mang sang ngày khác; ngày tương lai hiển thị số mục tiêu đã đặt.
+- DailyPlans.swift lưu mục tiêu một ngày [start,end), không dùng writer lặp cũ. Chỉnh/xoá ngày nằm giữa bản ghi legacy tách prefix/suffix để giữ ngày lân cận. Hoàn tác kiểm tra phiên bản sau xoá trước khi phục hồi, từ chối ghi đè mục tiêu thay thế hoặc sửa đổi mới.
+- prepareDailyPlans áp dụng sau load và trong perform (gồm import), chỉ kết thúc các mục tiêu ngày chưa có hạn tại hết hôm nay hoặc hết ngày bắt đầu tương lai; idempotent, giữ bản ghi/ngày cũ/tuần/ngủ.
+- **201/201 checks đạt**, gồm 14 kiểm tra mới: ví dụ học 2 giờ/3 giờ/ngày nghỉ; không tính nhiệm vụ tương lai sớm; sửa/xoá giữ ngày lân cận và tổng giờ; chuyển legacy giữ lịch sử/dừng lặp; tách legacy khi sửa/xoá; hoàn tác và từ chối xung đột; SQLite/JSON; ngày DST 23/25 giờ và qua năm; đầu vào sai nguyên tử; upsert không trùng; chỉnh ngày cũ chỉ tính lại ngày đó; giữ bốn nhiệm vụ ngủ và reset sạch. Các hồi quy trước đó tiếp tục đạt.
+
+## Cập nhật 1.18.1 — lịch sử nhiệm vụ ngày không mất khi sửa/xoá
+
+- Goal thêm effectiveUntil tuỳ chọn, mốc kết thúc loại trừ. saveDailyGoal tạo phiên bản mới từ đầu ngày hiện tại khi thay đổi ở ngày khác; sửa lại trong cùng ngày cập nhật đúng phiên bản. deleteGoal kết thúc phiên bản cũ từ hôm nay hoặc xoá phiên bản mới tạo hôm nay; không chạm nhật ký hoạt động và mục tiêu tuần.
+- dailyGoals và completionSummary chỉ tính phiên bản có hiệu lực ở từng ngày. Các ngày trước giữ mức mục tiêu cũ; khoảng ngày đã dừng không bị lấp khi thêm lại. progress không hoàn thành phiên bản đã hết hiệu lực ở ngày sau.
+- Hoàn tác mở lại phiên bản đã kết thúc, xử lý lặp an toàn; kiểm tra chồng lấn ngăn hoàn tác ghi đè mục tiêu thay thế. Engine.validate cho phép nhiều phiên bản không chồng lấn, từ chối ngày kết thúc không hợp lệ. Trường mới vắng mặt vẫn hiểu là lặp vô hạn như dữ liệu cũ.
+- **187/187 checks đạt**, gồm 10 kiểm tra mới: giữ hoàn thành/tỷ lệ cũ sau xoá; giữ mức cũ khi sửa; hoàn tác và xung đột; xoá cùng ngày không làm sống lại mục tiêu cũ; thêm lại sau khoảng nghỉ; lưu SQLite/JSON và dữ liệu cũ; nửa đêm ngày DST 25 giờ; ràng buộc phiên bản; tiến độ ngoài thời gian hiệu lực; yêu cầu xoá ID cũ và bảo toàn dữ liệu khác. Kiểm tra nhật ký một năm ~105.120 khoảng vẫn đạt.
+- Kiểm tra lõi bằng dữ liệu thử trong thư mục tạm; không sửa dữ liệu thật để thử chức năng.
 
 ## Cập nhật 1.18.0 — bộ mặc định mới theo cấu hình đã xác nhận
 

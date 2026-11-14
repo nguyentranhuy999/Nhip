@@ -17,8 +17,10 @@ struct SleepTrackingView: View {
                         .font(.callout).monospacedDigit().foregroundStyle(.secondary)
                     Spacer()
                     Text("\(durationText(session.end!.timeIntervalSince(session.start))) Nghỉ ngơi").font(.callout)
+                    if !HistoryProtection.isPast(session.start, journal: model.journal) {
                     Button(role: .destructive) { model.deleteSleepSession(session) } label: { Image(systemName: "trash") }
                         .buttonStyle(.borderless).accessibilityLabel("Xóa lần ghi nhận \(session.kind.title)")
+                    } else { Image(systemName: "lock.fill").foregroundStyle(.secondary).help("Ngày đã kết thúc · Chỉ xem") }
                 }.padding(.top, 6)
             }
         }
@@ -53,6 +55,7 @@ struct SleepTrackingView: View {
             Group {
                 if let session {
                     Button { model.deleteSleepSession(session) } label: { Image(systemName: "xmark.circle") }
+                        .disabled(HistoryProtection.isPast(session.start, journal: model.journal))
                         .buttonStyle(.borderless).foregroundStyle(.secondary)
                         .accessibilityLabel("Hủy lần ghi nhận \(kind.title.lowercased())")
                         .help("Hủy lần ghi nhận \(kind.title.lowercased())")

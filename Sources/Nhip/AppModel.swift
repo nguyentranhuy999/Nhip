@@ -19,6 +19,7 @@ import NhipCore
     @Published var dashboardSettingsPage: DashboardPage = .day
     @Published var showAllTimeSummary = true
     @Published var showGoals = false
+    @Published var showDeadlines = false
     @Published var showPersonalActivities = false
     @Published var activeSleepAlert: SleepAlert?
     private(set) var repository: Repository?
@@ -51,6 +52,7 @@ import NhipCore
             let repo = try Repository(url: dataDirectory.appendingPathComponent("journal.sqlite"))
             repository = repo
             journal = try repo.load()
+            GoalReports.prepareDailyPlans(&journal)
             PersonalTracking.prepare(&journal)
             DashboardSelection.prepare(&journal)
             SleepPlan.prepareStatistics(journal: &journal)
@@ -189,12 +191,13 @@ import NhipCore
         do { try repository?.save(journal) }
         catch { self.error = error.localizedDescription; storageFailed = true; cancelReminder() }
     }
-    @discardableResult func perform(_ operation: (inout Journal) throws -> Void) -> Bool {
+    @discardableResult func perform(_ operation: (inout Journal) throws -> Void, replacingHistory: Bool = false) -> Bool {
         guard !storageFailed else { return false }
         do {
-            var draft = journal; try operation(&draft); PersonalTracking.prepare(&draft); DashboardSelection.prepare(&draft); SleepPlan.prepareStatistics(journal: &draft)
+            var draft = journal; try operation(&draft); GoalReports.prepareDailyPlans(&draft); PersonalTracking.prepare(&draft); DashboardSelection.prepare(&draft); SleepPlan.prepareStatistics(journal: &draft)
             if PersonalTracking.quickActivities(draft).isEmpty { Engine.close(&draft, at: Date()) }
             try Engine.validate(draft)
+            if !replacingHistory { try HistoryProtection.validateChange(from: journal, to: draft) }
             try repository?.save(draft); undoState = journal; undoBaselineIntervals = Set(draft.intervals.map(\.id)); journal = draft
             syncSleepReminders()
             if quickActivities.isEmpty { WindowManager.shared.quick?.close(); cancelReminder() }
@@ -209,7 +212,7 @@ import NhipCore
         }
         let oldIDs = Set(restored.intervals.map(\.id))
         restored.intervals += journal.intervals.filter { !undoBaselineIntervals.contains($0.id) && !oldIDs.contains($0.id) }
-        do { try Engine.validate(restored); try repository?.save(restored); journal = restored; undoState = nil; notice = "Đã hoàn tác."; syncSleepReminders(); advance() }
+        do { try Engine.validate(restored); try HistoryProtection.validateChange(from: journal, to: restored); try repository?.save(restored); journal = restored; undoState = nil; notice = "Đã hoàn tác."; syncSleepReminders(); advance() }
         catch { self.error = error.localizedDescription }
     }
     @discardableResult func answer(_ span: Span, activityID: UUID, note: String = "") -> Bool {
@@ -470,7 +473,7 @@ import NhipCore
             let rescue = dataDirectory.appendingPathComponent("before-restore-\(Int(Date().timeIntervalSince1970)).json")
             guard backup(to: rescue) else { return }
             imported.runtime = Runtime()
-            perform { $0 = imported }; cancelReminder(); notice = "Đã khôi phục. Bản cũ: \(rescue.lastPathComponent)"
+            guard perform({ $0 = imported }, replacingHistory: true) else { return }; cancelReminder(); notice = "Đã khôi phục. Bản cũ: \(rescue.lastPathComponent)"
         } catch { self.error = error.localizedDescription }
     }
     func resetData() {
@@ -478,7 +481,7 @@ import NhipCore
         alert.informativeText = "Thao tác này xóa dữ liệu trong ứng dụng. Các file CSV/JSON đã xuất vẫn còn."
         alert.addButton(withTitle: "Xóa toàn bộ"); alert.addButton(withTitle: "Hủy")
         if alert.runModal() == .alertFirstButtonReturn {
-            cancelReminder(); perform { $0.reset() }; undoState = nil
+            cancelReminder(); perform({ $0.reset() }, replacingHistory: true); undoState = nil
         }
     }
     private func seedDemo() {

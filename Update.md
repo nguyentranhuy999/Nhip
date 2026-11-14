@@ -4,6 +4,66 @@ Các thay đổi được sắp xếp từ phiên bản mới nhất đến cũ 
 
 Hướng dẫn sử dụng hiện tại nằm trong [README.md](README.md). Chi tiết quy tắc hoạt động và kiểm tra kỹ thuật xem [SPEC.md](SPEC.md) và [QA.md](QA.md).
 
+## 1.22.3 — Thu gọn thống kê nhiệm vụ và deadline
+
+- Gộp Nhiệm vụ ngày, Nhiệm vụ tuần và Tổng số deadline thành ba ô cùng một hàng trong thẻ Nhiệm vụ & deadline ở đầu Tổng kết.
+- Thu gọn chữ, khoảng cách và phần mô tả; vẫn giữ số hoàn thành/tổng, tỷ lệ, thanh tiến độ và nút Xem chi tiết deadline.
+
+## 1.22.2 — Lấy mẫu dự báo deadline mỗi 15 phút
+
+- Trung bình/ngày, dự báo và mức cần làm/ngày chốt tại các mốc 15/30/45 phút… kể từ lúc tạo deadline. Trong 15 phút đầu hiển thị đang thu thập dữ liệu; giữa các mốc giữ nguyên mẫu, kể cả khi có câu trả lời ghi nhận trễ.
+- Giờ đã ghi nhận và tiến độ vẫn cập nhật khi có dữ liệu mới; đồng hồ đếm ngược chạy mỗi giây. Trang hiển thị giờ mẫu đang dùng và mốc tiếp theo.
+- Mở lại/chạy tiếp sau thời gian nghỉ dùng mốc 15 phút gần nhất, không đổi thời điểm tạo. Sửa kế hoạch tính lại mẫu cho cấu hình mới, giữ lịch lấy mẫu cũ. Khi đến hạn chốt kết quả thực tế, kể cả deadline ngắn hơn 15 phút.
+- Dự báo tiếp tục dùng toàn bộ thời gian từ khi tạo đến mốc mẫu và giữ nhãn ước tính ban đầu trong ngày đầu; không đổi lịch sử đã ghi.
+- Bộ kiểm tra đạt 250/250 trường hợp.
+
+## 1.22.1 — Thứ tự menu và tổng số deadline
+
+- Sắp xếp menu thành Ngày → Hoạt động → Mục tiêu → Deadline phía trên đường phân cách; các mục còn lại giữ nguyên. Menu bar và danh sách tuỳ chỉnh tên/icon dùng cùng thứ tự Hoạt động → Mục tiêu → Deadline.
+- Trang Tổng kết thêm thẻ Tổng số deadline ngay dưới phần Nhiệm vụ đã hoàn thành. Đếm mọi deadline đang lưu, gồm cả hạn chưa tới và đã qua; tự cập nhật khi thêm/xoá và có nút Xem chi tiết mở danh sách.
+- Bộ hồi quy hiện có đạt 245/245 trường hợp.
+
+## 1.22.0 — Deadline và dự báo thời gian thực hiện
+
+- Thêm trang Deadline ngay dưới Mục tiêu và lối mở từ menu bar; hỗ trợ tuỳ chỉnh tên/icon mục trong Cài đặt như các trang khác.
+- Đặt tên, ngày/giờ đến hạn và nhiều hoạt động với số giờ dự tính riêng. Đồng hồ đếm ngược cập nhật mỗi giây; hiển thị tổng giờ dự tính, đã ghi và dự báo đến hạn.
+- Từng hoạt động có tiến độ, trung bình/ngày từ lúc tạo deadline, dự báo tổng giờ và mức cần làm mỗi ngày từ hiện tại. Tính cả ngày không làm, cắt chính xác tại thời điểm tạo/hiện tại/đến hạn, hỗ trợ dữ liệu ghi nhanh và tự ghi nhận.
+- Cảnh báo trong trang cho từng hoạt động dự báo thiếu giờ, kể cả khi tổng giờ các hoạt động đã đủ; không gửi thông báo macOS. Dự báo bắt đầu sau một phút, trong 24 giờ đầu được ghi rõ là ước tính ban đầu.
+- Sửa deadline giữ mốc bắt đầu theo dõi. Khi đã đến hạn chỉ xem kết quả thực tế, không sửa kế hoạch; xoá có xác nhận và không xoá giờ hoạt động. Lưu JSON/SQLite tương thích bản sao lưu cũ, reset xoá kế hoạch cá nhân.
+- Bộ kiểm tra đạt 245/245 trường hợp.
+
+## 1.21.0 — Hoàn thành các mốc ngủ đã qua trong ngày bắt đầu
+
+- Lần mở app với dữ liệu mới hoặc đặt lại toàn bộ dữ liệu tự tính hoàn thành các nhiệm vụ ngủ có giờ mục tiêu đã qua trong ngày đó. Ví dụ bắt đầu 14:00 được tính hoàn thành mốc dậy sáng, ngủ trưa và dậy trưa.
+- Dùng giờ ngủ và múi giờ cấu hình; mốc ngủ đêm sau nửa đêm thuộc đêm sắp tới của ngày mục tiêu, không bị tính nhầm là đã qua. Các mốc chưa đến giờ vẫn theo dõi bình thường.
+- Lưu dấu hoàn thành ban đầu riêng, giữ khi mở lại, bật/tắt nhắc hoặc có bản ghi ngủ muộn sau đó. Không tạo phiên ngủ/bản ghi giờ nghỉ ảo, không tự tích ở các ngày sau.
+- Ngày bắt đầu vẫn có bốn nhiệm vụ, phần Tổng kết tính các dấu hoàn thành này. Không tự thay đổi lịch sử hoặc kết quả của bộ dữ liệu đã dùng trước bản cập nhật.
+- Bộ kiểm tra đạt 228/228 trường hợp.
+
+## 1.20.0 — Khoá chỉnh sửa ngày đã qua
+
+- Nhiệm vụ ngày cũ chuyển sang chỉ xem, không thêm/sửa/xoá hoặc hoàn tác sau khi sang ngày mới. Vẫn đặt được nhiệm vụ hôm nay và tương lai. Tuần đã kết thúc cũng khoá chỉnh sửa mục tiêu.
+- Khoá hoạt động bắt đầu trước hôm nay: không thêm bù, sửa giờ, đổi phân loại, tách, thay thế chồng lấn hoặc xoá. Nút chỉnh sửa được thay bằng biểu tượng khoá.
+- Kiểm tra thay đổi trước khi lưu và khi hoàn tác, chặn cả cửa sổ mở từ hôm trước. Khóa theo múi giờ báo cáo, kể cả ngày chuyển giờ mùa hè.
+- Phiên ngủ/hoạt động đang chạy qua đêm vẫn được kết thúc hôm nay với giờ bắt đầu đã lưu; lượt nhắc thực tế vắt qua nửa đêm vẫn ghi nhận trong thời hạn 60 giây. Nhắc cũ kết thúc trước nửa đêm không được ghi bù.
+- Giữ nguyên lịch sử và thống kê đã lưu. Khôi phục toàn bộ từ bản sao lưu/đặt lại dữ liệu dùng hộp xác nhận riêng hiện có.
+- Bộ kiểm tra đạt 218/218 trường hợp.
+
+## 1.19.0 — Đặt nhiệm vụ riêng cho từng ngày
+
+- Trang Mục tiêu có bộ chọn ngày, mũi tên chuyển ngày và nút Hôm nay. Cho đặt trước nhiệm vụ tương lai, xem/sửa nhiệm vụ của ngày cũ.
+- Nhiệm vụ mới chỉ áp dụng cho ngày đang chọn: có thể học 2 giờ hôm qua, 3 giờ hôm nay và không có nhiệm vụ học ngày mai. Sửa/xoá không đổi các ngày khác; hỗ trợ hoàn tác xoá.
+- Tổng kết tính nhiệm vụ đã đến ngày, giữ các kết quả ngày cũ, không tính ngày không có nhiệm vụ và không đưa kế hoạch tương lai vào tỷ lệ hiện tại. Tổng giờ hoạt động đã ghi nhận không bị xoá cùng nhiệm vụ.
+- Chuyển mục tiêu lặp cũ thành có hạn đến hết ngày mở bản cập nhật, giữ lịch sử trước đó. Chỉnh một ngày nằm trong giai đoạn cũ tách riêng ngày đó để giữ các ngày lân cận. Bốn nhiệm vụ ngủ/thức dậy tiếp tục lặp hằng ngày.
+- Bộ kiểm tra đạt 201/201 trường hợp.
+
+## 1.18.1 — Giữ lịch sử khi thay đổi nhiệm vụ ngày
+
+- Xoá nhiệm vụ ngày chỉ dừng nhiệm vụ từ hôm nay; giữ mục tiêu của các ngày trước để số nhiệm vụ hoàn thành và tỷ lệ trên Tổng kết không bị mất.
+- Sửa số giờ tạo mức mục tiêu mới từ hôm nay, giữ nguyên mức và kết quả của ngày cũ. Có thể thêm lại cùng hoạt động mà không tính nhiệm vụ cho những ngày đã dừng.
+- Giữ nút hoàn tác xoá cho cả nhiệm vụ vừa tạo và nhiệm vụ đã lặp nhiều ngày. Dữ liệu phiên bản được lưu trong SQLite và bản sao lưu JSON, tương thích dữ liệu cũ.
+- Bộ kiểm tra đạt 187/187 trường hợp.
+
 ## 1.18.0 — Bộ mặc định mới theo cấu hình hiện tại
 
 - Đặt sẵn 9 hoạt động: Học tập, Nghiên cứu, Thể thao, Giải trí, Công việc, Sinh hoạt cá nhân, Ngủ, Khác và Nghỉ ngơi, cùng icon và màu đã chọn.

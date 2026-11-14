@@ -52,10 +52,12 @@ private struct TimedActivitiesView: View {
                             }
                             Spacer()
                             Text(durationText(entry.seconds)).font(.callout).monospacedDigit()
+                            if HistoryProtection.canEdit(entry, journal: model.journal) {
                             Button { edit(session) } label: { Label("Sửa giờ", systemImage: "clock.arrow.circlepath") }
                                 .accessibilityLabel("Sửa giờ \(activityName(session).lowercased())")
                             Button(role: .destructive) { model.deletePersonalActivity(session) } label: { Image(systemName: "trash") }
                                 .buttonStyle(.borderless).accessibilityLabel("Xóa lần ghi nhận \(activityName(session).lowercased())")
+                            } else { Image(systemName: "lock.fill").foregroundStyle(.secondary).help("Ngày đã kết thúc · Chỉ xem") }
                         }.padding(.vertical, 6)
                     }
                 }
@@ -102,6 +104,7 @@ private struct TimedActivitiesView: View {
             Group {
                 if let session {
                     Button { model.deletePersonalActivity(session) } label: { Image(systemName: "xmark.circle") }
+                        .disabled(HistoryProtection.isPast(session.start, journal: model.journal))
                         .buttonStyle(.borderless).foregroundStyle(.secondary)
                         .accessibilityLabel("Hủy lần ghi nhận \(activity.name.lowercased())")
                         .help("Hủy lần ghi nhận \(activity.name.lowercased())")
@@ -116,19 +119,26 @@ private struct PersonalTimeEditor: View {
     @State var draft: PersonalTimeDraft
     @State private var validationError: String?
     @Environment(\.dismiss) private var dismiss
+    private var originalStartIsPast: Bool {
+        let start = model.journal.personalHistory?.sessions.first(where: { $0.id == draft.id })?.start ?? draft.start
+        return HistoryProtection.isPast(start, journal: model.journal)
+    }
+    private var readOnly: Bool { !draft.finishing && originalStartIsPast }
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("\(draft.finishing ? "Kết thúc" : "Chỉnh thời gian") · \(draft.title)").font(.title2.bold())
             Form {
                 DatePicker("Bắt đầu", selection: $draft.start, displayedComponents: [.date, .hourAndMinute])
+                    .disabled(originalStartIsPast)
                 DatePicker("Kết thúc", selection: $draft.end, displayedComponents: [.date, .hourAndMinute])
                 Text("Thời lượng: \(durationText(max(0, draft.end.timeIntervalSince(draft.start))))")
-            }.formStyle(.grouped)
+            }.formStyle(.grouped).disabled(readOnly)
+            if readOnly { Label("Ngày đã kết thúc · Chỉ xem", systemImage: "lock.fill").foregroundStyle(.secondary) }
             if let validationError { Text(validationError).font(.callout).foregroundStyle(.red) }
             HStack {
                 Spacer()
                 Button("Hủy") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(draft.finishing ? "Lưu và kết thúc" : "Lưu giờ") { save() }.buttonStyle(.borderedProminent).tint(.indigo).keyboardShortcut(.defaultAction)
+                Button(draft.finishing ? "Lưu và kết thúc" : "Lưu giờ") { save() }.buttonStyle(.borderedProminent).tint(.indigo).keyboardShortcut(.defaultAction).disabled(readOnly)
             }
         }.padding(24).frame(width: 560, height: 330)
             .environment(\.timeZone, model.journal.preferences.calendar.timeZone)
@@ -144,6 +154,7 @@ private struct PersonalTimeEditor: View {
             } else {
                 try PersonalTracking.edit(&candidate, sessionID: draft.id, start: draft.start, end: draft.end)
             }
+            try HistoryProtection.validateChange(from: model.journal, to: candidate)
             if model.savePersonalActivity(candidate) { dismiss() }
         } catch { validationError = error.localizedDescription }
     }

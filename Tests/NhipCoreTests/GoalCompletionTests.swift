@@ -94,7 +94,7 @@ final class GoalCompletionTests {
         XCTAssertEqual(GoalReports.completionSummary(j, now: now).daily.completed, 1)
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 60, at: now)
         XCTAssertEqual(GoalReports.completionSummary(j, now: now).daily.completed, 0)
-        let removed = GoalReports.deleteGoal(&j, id: j.goals[0].id)
+        let removed = GoalReports.deleteGoal(&j, id: j.goals[0].id, at: now)
         XCTAssertEqual(GoalReports.completionSummary(j, now: now).daily.total, 0)
         try GoalReports.restoreGoals(&j, goals: removed)
         XCTAssertEqual(GoalReports.completionSummary(j, now: now).daily.total, 1)

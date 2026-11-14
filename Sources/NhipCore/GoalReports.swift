@@ -20,7 +20,7 @@ public struct GoalCompletionSummary {
 
 public enum GoalReports {
     /// Count recurring goal occurrences, rather than just distinct goal definitions.
-    /// Uses the goals still present in the journal and their saved weekly versions.
+    /// Includes ended daily versions so changing today never removes past occurrences.
     public static func completionSummary(_ j: Journal, now: Date = Date()) -> GoalCompletionSummary {
         var result = GoalCompletionSummary()
         let calendar = j.preferences.calendar
@@ -75,6 +75,11 @@ public enum GoalReports {
                 let key = completion.day + ":" + completion.reminder.rawValue
                 if actual[key] == nil { actual[key] = true }
             }
+            // First-day completions are an explicit allowance, independent of any
+            // late sleep recorded later on the initialization day.
+            for completion in j.sleepReminders?.initialCompletions ?? [] {
+                actual[completion.day + ":" + completion.reminder.rawValue] = true
+            }
             let firstKey = SleepPlan.dayKey(firstDay, calendar: calendar), lastKey = SleepPlan.dayKey(today, calendar: calendar)
             result.daily.completed += actual.filter { key, complete in
                 let day = String(key.prefix(10))
@@ -85,6 +90,7 @@ public enum GoalReports {
     }
     private static func isComplete(_ goal: Goal, seconds: Double, range: DateInterval, now: Date) -> Bool {
         let active = now >= range.start && goal.effectiveFrom < range.end
+            && (goal.effectiveUntil.map { $0 > range.start } ?? true)
         let target = Double(goal.minutes) * 60
         switch goal.direction {
         case "increase": return active && target > 0 && seconds >= target
@@ -93,8 +99,13 @@ public enum GoalReports {
         }
     }
     public static func dailyGoals(_ j: Journal, at date: Date) -> [Goal] {
-        let end = j.preferences.calendar.dateInterval(of: .day, for: date)!.end
-        return j.goals.filter { $0.isDaily && $0.effectiveFrom < end }
+        let range = j.preferences.calendar.dateInterval(of: .day, for: date)!
+        var latest: [UUID: Goal] = [:]
+        for goal in j.goals where goal.isDaily && goal.effectiveFrom < range.end
+            && (goal.effectiveUntil.map { $0 > range.start } ?? true) {
+            if latest[goal.activityID].map({ $0.effectiveFrom <= goal.effectiveFrom }) ?? true { latest[goal.activityID] = goal }
+        }
+        return j.activities.compactMap { latest[$0.id] }
     }
     public static func weeklyGoals(_ j: Journal, at date: Date) -> [Goal] {
         let end = j.preferences.calendar.dateInterval(of: .weekOfYear, for: date)!.end
@@ -135,22 +146,45 @@ public enum GoalReports {
         guard j.activity(activityID) != nil, (1...1440).contains(minutes) else {
             throw JournalError.invalid("Mục tiêu mỗi ngày phải từ 1 phút đến 24 giờ và có hoạt động hợp lệ.")
         }
-        if let index = j.goals.firstIndex(where: { $0.isDaily && $0.activityID == activityID }) {
+        let day = j.preferences.calendar.startOfDay(for: date)
+        let current = dailyGoals(j, at: date).first { $0.activityID == activityID }
+        if let current, let index = j.goals.firstIndex(where: { $0.id == current.id }), current.effectiveFrom >= day {
+            // Repeated edits on the same day update that day's version only.
             j.goals[index].minutes = minutes; j.goals[index].direction = "increase"
         } else {
-            j.goals.append(Goal(activityID: activityID, direction: "increase", minutes: minutes, effectiveFrom: j.preferences.calendar.startOfDay(for: date), period: "day"))
+            let until: Date?
+            if let current, let index = j.goals.firstIndex(where: { $0.id == current.id }) {
+                until = current.effectiveUntil
+                j.goals[index].effectiveUntil = day
+            } else {
+                until = j.goals.filter { $0.isDaily && $0.activityID == activityID && $0.effectiveFrom > day }.map(\.effectiveFrom).min()
+            }
+            j.goals.append(Goal(activityID: activityID, direction: "increase", minutes: minutes, effectiveFrom: day, period: "day", effectiveUntil: until))
         }
     }
-    @discardableResult public static func deleteGoal(_ j: inout Journal, id: UUID) -> [Goal] {
+    @discardableResult public static func deleteGoal(_ j: inout Journal, id: UUID, at date: Date = Date()) -> [Goal] {
         guard let goal = j.goals.first(where: { $0.id == id }) else { return [] }
+        if goal.isDaily {
+            // End this recurring rule today, retaining every previous day's target.
+            guard dailyGoals(j, at: date).contains(where: { $0.id == id }),
+                  let index = j.goals.firstIndex(where: { $0.id == id }) else { return [] }
+            let day = j.preferences.calendar.startOfDay(for: date)
+            if goal.effectiveFrom >= day { j.goals.remove(at: index) }
+            else { j.goals[index].effectiveUntil = day }
+            return [goal]
+        }
         let removed = j.goals.filter { $0.activityID == goal.activityID && $0.periodName == goal.periodName }
         j.goals.removeAll { $0.activityID == goal.activityID && $0.periodName == goal.periodName }
         return removed
     }
     public static func restoreGoals(_ j: inout Journal, goals: [Goal]) throws {
         var draft = j
-        let ids = Set(draft.goals.map(\.id))
-        draft.goals += goals.filter { !ids.contains($0.id) }
+        for goal in goals {
+            if let index = draft.goals.firstIndex(where: { $0.id == goal.id }) {
+                // Undo must reopen an ended version, not merely reinsert missing IDs.
+                draft.goals[index] = goal
+            } else { draft.goals.append(goal) }
+        }
         try Engine.validate(draft)
         j = draft
     }

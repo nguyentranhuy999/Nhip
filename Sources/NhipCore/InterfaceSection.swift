@@ -1,7 +1,7 @@
 import Foundation
 
 public enum InterfaceSection: String, CaseIterable, Identifiable {
-    case day, goals, personal, week, month, year, summary, settings
+    case day, personal, goals, deadlines, week, month, year, summary, settings
     public var id: String { rawValue }
     public var title: String {
         switch self {
@@ -11,6 +11,7 @@ public enum InterfaceSection: String, CaseIterable, Identifiable {
         case .year: return "Năm"
         case .summary: return "Tổng kết"
         case .goals: return "Mục tiêu"
+        case .deadlines: return "Deadline"
         case .personal: return "Hoạt động"
         case .settings: return "Cài đặt"
         }
@@ -43,6 +44,7 @@ public enum InterfaceSection: String, CaseIterable, Identifiable {
         case .year: return "chart.bar"
         case .summary: return "sum"
         case .goals: return "target"
+        case .deadlines: return "hourglass"
         case .personal: return "chart.bar.horizontal.page"
         case .settings: return "slider.horizontal.3"
         }

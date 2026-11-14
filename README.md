@@ -56,19 +56,44 @@ Ví dụ: trước khi đi tập, mở **Hoạt động** và bấm **Bắt đ�
 
 Với giấc ngủ, dùng hai hàng **Ngủ trưa / Ngủ đêm** và các nút **Ngủ / Thức dậy**. Nhịp tự tính thời gian nghỉ từ hai mốc này. Các mục tiêu ngủ/thức dậy tự đánh dấu khi bạn ghi nhận đúng giờ hoặc sớm hơn.
 
+Ở lần mở đầu tiên hoặc sau khi xoá toàn bộ dữ liệu, các nhiệm vụ ngủ/thức dậy có giờ mục tiêu đã qua trong ngày đó được tự tính hoàn thành. Ví dụ, bắt đầu lúc 14:00 thì các mốc 07:00, 12:30 và 13:30 được tính hoàn thành; mục ngủ đêm 00:00 của đêm sắp tới vẫn cần ghi nhận. Việc này không cộng thêm giờ ngủ và không tự lặp ở ngày tiếp theo.
+
 ## Xem thống kê và đặt mục tiêu
 
 | Mục | Bạn sẽ thấy gì? |
 | --- | --- |
 | **Ngày** | Dòng thời gian, chi tiết hoạt động và thời gian ưu tiên của ngày đang xem. |
-| **Mục tiêu** | Mục tiêu trong ngày và tiến độ các nhiệm vụ ngủ/thức dậy. |
 | **Hoạt động** | Các nút ghi ngủ/dậy, Bắt đầu/Kết thúc và lịch sử hoạt động tự ghi nhận. |
+| **Mục tiêu** | Chọn ngày để đặt nhiệm vụ riêng, xem tiến độ và các nhiệm vụ ngủ/thức dậy. |
+| **Deadline** | Hạn hoàn thành, đồng hồ đếm ngược và dự báo số giờ cho từng hoạt động. |
 | **Tuần, Tháng, Năm** | Tổng thời gian, biểu đồ và so sánh với kỳ trước. Mục tiêu tuần được quản lý trong trang Tuần. |
-| **Tổng kết** | Tổng thời gian từng hoạt động trong toàn bộ lịch sử, số nhiệm vụ đã hoàn thành và tỷ lệ hoàn thành. |
+| **Tổng kết** | Tổng thời gian từng hoạt động trong toàn bộ lịch sử, số nhiệm vụ đã hoàn thành, tỷ lệ hoàn thành và tổng số deadline. |
+
+Trong **Mục tiêu**, chọn ngày bằng ô ngày hoặc hai mũi tên, chọn hoạt động, nhập số giờ rồi bấm **Lưu nhiệm vụ**. Bạn có thể đặt trước cho ngày mai hoặc xem lại ngày cũ; nút **Hôm nay** đưa bạn về ngày hiện tại.
+
+Mỗi ngày có nhiệm vụ riêng: hôm qua học 2 giờ, hôm nay học 3 giờ, ngày mai không đặt thì không có nhiệm vụ học. Bạn chỉ thêm, sửa hoặc xoá nhiệm vụ của hôm nay và các ngày tương lai; nhiệm vụ không tự lặp sang ngày sau. Ngày đã kết thúc chỉ được xem, không sửa hoặc xoá. **Tổng kết** giữ kết quả của các ngày khác và chưa tính nhiệm vụ tương lai vào tỷ lệ hoàn thành. Nếu xoá nhầm, bấm **Hoàn tác xóa** trước khi ngày đó kết thúc. Bốn nhiệm vụ ngủ/thức dậy vẫn lặp hằng ngày.
+
+Nhiệm vụ lặp từ dữ liệu cũ được giữ đến hết ngày mở bản cập nhật cùng lịch sử trước đó; những ngày sau cần đặt riêng.
 
 Để chọn các ô tổng giờ, vào **Cài đặt → Dashboard**, chọn trang cần chỉnh rồi bấm các hoạt động muốn hiển thị. Mỗi trang chọn tối đa **6 hoạt động**; dùng mũi tên để đổi thứ tự. Lựa chọn tự lưu.
 
 Để theo dõi nhóm việc quan trọng, đánh dấu **ngôi sao** trong **Cài đặt → Hoạt động**. Các phần so sánh dùng tổng thời gian của nhóm này. Bạn có thể chọn các ô dashboard và nhóm ưu tiên độc lập với nhau.
+
+Dữ liệu hoạt động của ngày đã qua cũng chỉ được xem: không thêm bù, sửa giờ, đổi phân loại, tách hoặc xoá; hoàn tác không được thay đổi lịch sử đã khoá. Các bản ghi bắt đầu trước hôm nay (kể cả khoảng qua nửa đêm) được khoá cả khoảng. Ranh giới ngày tính theo múi giờ trong cài đặt.
+
+Phiên ngủ hoặc hoạt động đang chạy từ hôm trước vẫn có thể kết thúc hôm nay; giờ bắt đầu được giữ nguyên. Nhiệm vụ tuần đã kết thúc tuần cũng được khoá chỉnh sửa. Các chức năng khôi phục bản sao lưu và đặt lại toàn bộ dữ liệu vẫn có hộp xác nhận riêng trong Cài đặt.
+
+## Theo dõi deadline
+
+Vào **Deadline** ngay dưới Mục tiêu, bấm **Thêm deadline**, đặt tên, chọn ngày/giờ đến hạn và các hoạt động cần làm. Nhập số giờ dự tính cho từng hoạt động rồi lưu. Bạn có thể theo dõi nhiều deadline cùng lúc. Trang **Tổng kết** đặt ba ô Nhiệm vụ ngày, Nhiệm vụ tuần và Tổng số deadline cùng một hàng gọn. Số deadline gồm cả hạn sắp tới và hạn đã qua đang lưu; bấm **Xem chi tiết** để mở danh sách.
+
+Mỗi deadline có đồng hồ đếm ngược và giờ đã ghi nhận, trung bình/ngày, dự báo đến hạn, cùng mức cần làm mỗi ngày từ bây giờ. Chỉ tính giờ thực tế từ lúc tạo deadline đến thời điểm đang xem, không dùng lịch sử trước đó; gồm cả nhắc nhanh và hoạt động tự ghi nhận. Đổi tên/icon hoặc lưu trữ hoạt động không làm mất số giờ.
+
+Dự báo = giờ đã ghi ở mốc lấy mẫu + trung bình/ngày × số ngày còn lại tại mốc đó. Trung bình tính từ lúc tạo đến mốc lấy mẫu gần nhất (mỗi ngày tương đương 24 giờ), gồm cả những ngày không ghi hoạt động; không chỉ lấy riêng 15 phút gần nhất. Ví dụ, sau 2 ngày ghi 4 giờ thì trung bình là 2 giờ/ngày; nếu hạn cách lúc tạo 10 ngày, dự báo tổng cộng 20 giờ.
+
+App chốt lại mẫu mỗi **15 phút tính từ lúc tạo deadline**, lần đầu sau 15 phút. Trung bình/ngày, dự báo và mức cần làm/ngày giữ theo mẫu đó đến lần lấy mẫu tiếp theo; giờ đã ghi nhận và tiến độ vẫn cập nhật khi có dữ liệu mới. Trong trang có giờ lấy mẫu và giờ cập nhật tiếp theo. Nếu một hoạt động có dự báo thấp hơn số giờ dự tính, app hiển thị cảnh báo tại đây, không gửi thông báo macOS. Dự báo trong 24 giờ đầu có nhãn **Ước tính ban đầu** vì mẫu còn ít. Đây là ước lượng khi giữ nguyên nhịp hiện tại, không phải số giờ đã hoàn thành.
+
+Bạn có thể sửa kế hoạch trước khi đến hạn; thời điểm bắt đầu theo dõi được giữ nguyên. Đến hạn, app chỉ tính kết quả thực tế đến đúng mốc đó, không cộng giờ làm sau hạn. Xoá deadline có xác nhận và giữ nguyên nhật ký hoạt động; các nhiệm vụ ngày/tuần vẫn thống kê riêng. Deadline được lưu trong dữ liệu và bản sao lưu JSON, xoá cùng dữ liệu khi đặt lại toàn bộ.
 
 ## Điều chỉnh lời nhắc
 

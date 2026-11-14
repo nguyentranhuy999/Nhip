@@ -130,6 +130,58 @@ Từ app 1.4, thay lối mở Ghi nhận nhanh thủ công bằng mục “Tổn
 
 Quy tắc hiện hành từ app 1.3: bỏ các phần “Chưa xác định”, “Cần bổ sung”, số lượng khoảng chờ, vùng màu cho khoảng chưa trả lời và các cảnh báo độ đầy đủ khỏi giao diện. Khoảng bỏ qua không được tự gán hoạt động và không hỏi lại. Mỗi lần nhắc chỉ hỏi khoảng vừa qua; lượt mới thay thế lượt cũ. Các mốc theo dõi cũ vẫn giữ nội bộ để tương thích dữ liệu; không xóa hoạt động đã lưu. Các mô tả về danh sách chờ và cảnh báo độ đầy đủ bên dưới thuộc thiết kế ban đầu, được thay bằng quy tắc hiện hành này.
 
+## Điều chỉnh 1.22.3: hàng thống kê nhiệm vụ gọn
+
+Tổng kết gộp ba ô Nhiệm vụ ngày, Nhiệm vụ tuần và Tổng số deadline vào cùng HStack ba cột trong một Card Nhiệm vụ & deadline. Bỏ card deadline riêng và các dòng mô tả lặp, giảm padding/spacing/font số; giữ count.completed/count.total, phần trăm và progress bar của ngày/tuần, tổng deadline đang lưu và nút mở danh sách. Dữ liệu và công thức thống kê giữ nguyên.
+
+## Điều chỉnh 1.22.2: chu kỳ mẫu deadline 15 phút
+
+Deadlines.sampleInterval = 900 giây. Mốc mẫu = createdAt + floor((min(now,dueAt)-createdAt)/900)*900; trước đủ 900 giây không có mẫu/dự báo. DeadlineForecast chứa DeadlineSample (plan, sampledAt, seconds theo ID) trong bộ nhớ và nextSampleAt. DeadlineCard giữ sample bằng State, truyền previousSample để tái sử dụng khi plan và mốc không đổi. Ghi nhận trễ trong cửa sổ đã chốt không đổi sample đến mốc kế tiếp. Sau đóng/mở view/app, mẫu suy ra từ dữ liệu đã lưu tại mốc 15 phút hoàn tất gần nhất, không ghi thêm snapshot vào journal.
+
+Actual/progress vẫn tính đến now, còn average/projection/required theo sampledActual và sampleObserved/sampleRemaining của mốc mẫu để không trôi giữa các lần cập nhật. Khi actual đã đủ mục tiêu thì bỏ cảnh báo thiếu giờ cũ cho hoạt động đó. Không phải rolling average của riêng 15 phút cuối: vẫn là trung bình từ lúc tạo đến mốc lấy mẫu. Countdown 1 giây độc lập, view làm tươi 30 giây hoặc theo thay đổi journal nhưng không tự chốt lại mẫu giữa slot. Sửa plan vô hiệu sample cache và tính theo cấu hình mới tại cùng mốc creation; thời gian nghỉ dài nhảy đến mốc hoàn tất gần nhất, không phát dồn các mẫu đã lỡ.
+
+Khi now >= dueAt, chốt bằng giờ thực tế trong cửa sổ [createdAt,dueAt), kể cả hạn dưới 15 phút; average chỉ hiện khi có ít nhất 15 phút quan sát và dùng toàn bộ thời gian đến hạn; nextSampleAt nil và required nil. Các chỉnh sửa dữ liệu thực tế còn được phép trong ngày vẫn phản ánh đúng vào kết quả cuối; không giữ cache dự báo cho kết quả hết hạn. Không thay schema/model đã lưu hoặc dữ liệu người dùng.
+
+## Điều chỉnh 1.22.1: điều hướng và tổng số deadline
+
+Nhóm trên sidebar theo thứ tự Day → Personal → Goals → Deadlines (hiển thị Ngày → Hoạt động → Mục tiêu → Deadline theo tên mặc định). Nhóm Tuần/Tháng/Năm/Tổng kết bên dưới giữ nguyên. Menu bar và InterfaceSection.allCases đưa Personal trước Goals/Deadlines, giữ nguyên raw key để không ảnh hưởng tên/icon đã lưu.
+
+Tổng kết có thẻ Tổng số deadline dưới Nhiệm vụ đã hoàn thành và trên Thời gian theo từng hoạt động. Số đếm lấy trực tiếp Journal.deadlines?.count ?? 0, gồm cả còn hạn và hết hạn đang lưu, không đếm deadline đã xoá, không gộp số hoạt động trong một deadline. Nút Xem chi tiết mở trang Deadline. Không đổi model, dữ liệu hoặc công thức thống kê.
+
+## Điều chỉnh 1.22.0: kế hoạch deadline và dự báo
+
+Journal.deadlines là [DeadlinePlan]? tuỳ chọn; vắng trong JSON cũ nghĩa là chưa có deadline. DeadlinePlan gồm UUID, title, createdAt bất biến, dueAt, targets (activityID + minutes); tên không rỗng tối đa 120 ký tự, dueAt > createdAt, targets không trùng hoạt động và mỗi mức từ 1 phút đến 100.000 giờ. Tạo mới/hạn cập nhật phải ở tương lai. Metadata hoạt động hiện tại lấy theo ID, kể cả hoạt động lưu trữ. validate chạy trong Engine; JSON/SQLite sao lưu toàn bộ, reset xoá deadlines.
+
+Trang riêng dưới Mục tiêu, icon hourglass, được chỉnh tên/icon trong Giao diện. Có tạo/sửa/xoá (xác nhận xoá) nhiều kế hoạch; xoá không thay đổi entry/goal. Không đưa deadline vào số nhiệm vụ ngày/tuần của Tổng kết. Hạn đã qua chỉ xem, không cập nhật mục tiêu/hạn/createdAt, nhưng có thể xoá kế hoạch; HistoryProtection kiểm tra expired edit và createdAt. Reset/khôi phục toàn bộ giữ luồng xác nhận riêng.
+
+Deadlines.forecast cắt mỗi entry theo [createdAt, min(now, dueAt)) và lọc targetID; tổng actual không phụ thuộc nguồn ghi hoặc tên/icon. observedSeconds là thời gian thực tế từ createdAt đến min(now,dueAt), số ngày quan sát = observedSeconds/86400. averageSecondsPerDay = actual/observedDays; projection = actual + average*remainingSeconds/86400; requiredSecondsPerDay = max(target-actual,0)/(remainingSeconds/86400). Bao gồm thời gian không ghi nhận, DST dùng đúng elapsed time. Trước 60 giây quan sát không tạo dự báo/average để tránh chia 0; sau đó sample dưới 24 giờ có nhãn ước tính ban đầu. Khi now >= dueAt, projection chính là actual đến hạn, required nil, số giờ sau hạn không tính.
+
+Cảnh báo chỉ trong trang, không macOS notification: từng hoạt động có projection < target (sai số 0,001 giây) đánh dấu thiếu giờ; không để hoạt động dư che hoạt động thiếu. Đã đủ khi mọi target actual >= target. Ngày hết hạn thiếu giờ hiển thị kết quả đỏ. Countdown riêng 1 giây, dự báo cập nhật 30 giây hoặc khi journal thay đổi để tránh quét entry mỗi giây.
+
+## Điều chỉnh 1.21.0: hoàn thành mốc ngủ đã qua lúc bắt đầu dữ liệu
+
+SleepPlan.initializeFirstDay chỉ chạy khi Repository.load không có hàng journal, hoặc Journal.reset. Lần mở đầu tiên là mốc khả dụng để xác định bắt đầu dùng (không dựa vào giờ tải file trên máy). Lưu statisticsStartDay và initialCompletions riêng: tự hoàn thành mọi deadline ≤ thời điểm bắt đầu trong ngày mục tiêu đó. Deadline theo SleepSchedule và múi giờ báo cáo; ngủ đêm khi nightBedtimeIsNextDay được so với mốc ngày kế tiếp, không phải 00:00 đã qua của ngày hiện tại. Các mốc mặc định tại 14:00 cho kết quả 3/4.
+
+Dấu hoàn thành ban đầu là snapshot một lần, không bị thay đổi khi mở lại, qua ngày, đổi giờ nhắc, tắt/bật nhắc, hoặc bản ghi ngủ thực tế muộn. isComplete và completionSummary ưu tiên dấu ban đầu trước kết quả ngủ thực tế cho đúng ngày. Không tạo phiên ngủ, entry, hoặc thời lượng nghỉ. Giao diện dùng nhãn Hoàn thành cho dấu ban đầu, không tuyên bố người dùng ngủ đúng giờ.
+
+initialCompletions là trường tuỳ chọn của SleepReminderState; bản sao lưu cũ thiếu trường này giữ nguyên hành vi/kết quả. Kiểm tra ngày hợp lệ, không trùng và chỉ thuộc statisticsStartDay. HistoryProtection khoá dấu này sau khi ngày kết thúc. Không chạy khởi tạo bù cho bộ dữ liệu đã lưu, kể cả khi trống hoặc chưa có baseline trong dữ liệu cũ. Đặt lại dữ liệu khởi tạo dấu mới cho ngày reset; vẫn đúng tổng bốn nhiệm vụ và không mang lịch sử cũ sang.
+
+## Điều chỉnh 1.20.0: bảo toàn dữ liệu ngày đã qua
+
+HistoryProtection.validateChange chạy sau validate cấu trúc và trước lưu trong AppModel.perform/undo. Ranh giới khoá là 00:00 hôm nay theo calendar/timezone dữ liệu hiện tại. Nhiệm vụ ngày chỉ thêm/sửa/xoá từ hôm nay trở đi; ngày cũ chỉ xem. So sánh mức mục tiêu theo các mốc phiên bản, không so sánh ID, cho tách phiên bản legacy khi sửa hôm nay mà giữ nguyên mục tiêu các ngày cũ. Các tuần đã kết thúc cũng giữ mức mục tiêu cũ.
+
+Bản ghi hoạt động có start trước ranh giới khoá giữ nguyên toàn bộ trường, kể cả giờ/khoảng/phân loại/ghi chú. Không thêm bản ghi quá khứ hoặc chuyển bản ghi hôm nay sang quá khứ. Áp dụng cho thao tác sửa/tách/thay thế/xoá và hoàn tác; cửa sổ stale qua nửa đêm bị chặn khi lưu. Lịch sử phiên ngủ/hoạt động cũ và dấu ngủ legacy được bảo toàn.
+
+Ngoại lệ nghiệp vụ: phiên ngủ/hoạt động đã active trước nửa đêm được kết thúc hôm nay với nguyên danh tính/giờ bắt đầu/mốc ngủ đã lưu, tạo đúng bản ghi liên kết mới; không được sửa giờ bắt đầu hoặc kết thúc bù vào ngày cũ. Lượt check-in có interval.start trước nhưng end sau nửa đêm được trả lời thực tế trong 60 giây sau end; lượt kết thúc trước ranh giới không được ghi bù. Bản ghi qua đêm đã kết thúc chỉ xem cả khoảng. Chức năng khôi phục toàn bộ/đặt lại dữ liệu hiện có là thao tác riêng có xác nhận, không qua giới hạn chỉnh sửa thông thường. Đây là bảo vệ trong app, không phải kho lưu trữ chống sửa file hoặc đồng hồ hệ điều hành.
+
+## Điều chỉnh 1.19.0: kế hoạch nhiệm vụ độc lập theo ngày
+
+Trang Mục tiêu có bộ chọn ngày theo múi giờ báo cáo, mũi tên ngày trước/sau và Hôm nay. Mỗi nhiệm vụ người dùng mới chỉ có hiệu lực trong khoảng [đầu ngày đã chọn, đầu ngày kế tiếp), với giờ mục tiêu riêng. Cho đặt trước ngày tương lai và chỉnh ngày cũ. Không có nhiệm vụ ở ngày nào thì không tính ngày đó là thiếu hoặc chưa hoàn thành. Nhiệm vụ ngủ/thức dậy giữ lịch lặp và cách tính hiện tại.
+
+saveDailyPlan/deleteDailyPlan chỉ thay đổi khoảng ngày đang chọn, tách phần trước/sau của một phiên bản legacy nếu cần. Hoàn tác phục hồi thay đổi đúng ngày và không ghi đè các sửa đổi mới hơn. SQLite/JSON dùng effectiveFrom/effectiveUntil đã có. Khi tải dữ liệu hoặc nhập bản sao lưu cũ, prepareDailyPlans kết thúc mục tiêu ngày không có effectiveUntil tại cuối hôm nay (hoặc cuối ngày bắt đầu nếu là mục tiêu tương lai); giữ mọi ngày cũ, không kéo dài lại ở lần mở sau. Các API ghi mục tiêu lặp cũ chỉ còn phục vụ tương thích và kiểm tra lịch sử; giao diện dùng kế hoạch theo ngày.
+
+Tổng kết chỉ tính những nhiệm vụ có hiệu lực ở ngày đã bắt đầu tính tới hiện tại, với mục tiêu riêng của ngày đó; loại trừ kế hoạch tương lai. Kết quả tiếp tục suy ra từ bản ghi hoạt động và mức mục tiêu, không xoá nhật ký khi xoá nhiệm vụ. Nếu người dùng chủ động sửa nhiệm vụ ngày cũ, chỉ kết quả ngày được sửa sẽ tính lại.
+
 ## 1. Mục tiêu sản phẩm
 
 Ứng dụng cá nhân chạy trên MacBook Air M1, nhắc người dùng mỗi 5 phút để ghi lại hoạt động vừa thực hiện. Người dùng có thể xem lại lịch sử trong ngày, tổng thời gian theo hoạt động và xu hướng theo tuần, tháng, năm.
@@ -362,12 +414,12 @@ Các thực thể tối thiểu:
 | TrackingInterval | id, sessionId, startedAtUTC, endedAtUTC |
 | ActivityEntry | id, startedAtUTC, endedAtUTC, categoryId, note, source, createdAtUTC, updatedAtUTC |
 | CheckIn | id, intervalId, scheduledAtUTC, answeredAtUTC, status |
-| ActivityGoal | id, categoryId, direction, minutes, effectiveFrom, period (day/week; thiếu trường này là week) |
+| ActivityGoal | id, categoryId, direction, minutes, effectiveFrom, effectiveUntil (tuỳ chọn, mốc kết thúc loại trừ), period (day/week; thiếu trường này là week) |
 | Settings | intervalMinutes, reportTimezone, schedule, sound, launchAtLogin |
 
 ActivityEntry có thể phủ toàn bộ hoặc một phần TrackingInterval. Phần của khoảng theo dõi không có ActivityEntry được suy ra là “chưa xác định”; tránh lưu hai nguồn tổng thời lượng mâu thuẫn nhau. Bản ghi thủ công có thể nằm ngoài TrackingInterval, nhưng không được chồng với ActivityEntry khác.
 
-Nguồn bản ghi phân biệt trả lời nhắc, nhập thủ công và chỉnh sửa. CheckIn giữ danh tính của lần nhắc để mở thông báo cũ đúng ngữ cảnh. Mục tiêu tuần cũ giữ ngày hiệu lực và phiên bản; mục tiêu mỗi ngày lưu mức lặp hiện tại, chọn cùng hoạt động để điều chỉnh mức đó. Trạng thái hoàn thành luôn suy ra từ bản ghi, không lưu một cờ tích có thể bị mang sang ngày hôm sau.
+Nguồn bản ghi phân biệt trả lời nhắc, nhập thủ công và chỉnh sửa. CheckIn giữ danh tính của lần nhắc để mở thông báo cũ đúng ngữ cảnh. Mục tiêu tuần cũ giữ ngày hiệu lực và phiên bản; mục tiêu mỗi ngày lưu các phiên bản có ngày bắt đầu/kết thúc; chọn cùng hoạt động để điều chỉnh từ hôm nay mà không đổi mức cũ. Xoá mục tiêu ngày kết thúc hiệu lực từ 00:00 hôm nay, giữ lịch sử trước đó; mục tiêu mới tạo hôm nay được xoá hẳn vì chưa có ngày cũ. Chỉ một phiên bản cho mỗi hoạt động có hiệu lực tại cùng thời điểm. Thêm lại sau khi xoá không lấp các ngày đã dừng. Hoàn tác mở lại phiên bản đã kết thúc hoặc thêm lại phiên bản vừa xoá; từ chối nếu chồng lấn với mục tiêu mới. effectiveUntil vắng mặt trong dữ liệu cũ nghĩa là tiếp tục lặp, giữ tương thích SQLite/JSON. Trạng thái hoàn thành luôn suy ra từ bản ghi, không lưu một cờ tích có thể bị mang sang ngày hôm sau.
 
 CSV gồm: thời gian bắt đầu, thời gian kết thúc, múi giờ, thời lượng phút, hoạt động, ghi chú và nguồn ghi nhận. Sao lưu JSON bao gồm toàn bộ dữ liệu và cài đặt, không chỉ các dòng CSV.
 

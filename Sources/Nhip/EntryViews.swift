@@ -125,7 +125,7 @@ struct EntryDraft: Identifiable {
     init(date: Date, calendar: Calendar, activityID: UUID?) {
         let now = Date()
         let base = calendar.isDate(date, inSameDayAs: now) ? now : calendar.date(bySettingHour: 9, minute: 0, second: 0, of: date)!
-        end = min(base, now); start = end.addingTimeInterval(-300); self.activityID = activityID
+        end = min(base, now); start = max(end.addingTimeInterval(-300), calendar.startOfDay(for: now)); self.activityID = activityID
     }
     init(entry: Entry) { originalID = entry.id; start = entry.start; end = entry.end; activityID = entry.activityID; note = entry.note }
 }
@@ -139,6 +139,11 @@ struct EntryEditor: View {
     @State private var secondActivity: UUID?
     @State private var localError: String?
     @State private var confirmDelete = false
+    private var readOnly: Bool {
+        guard let id = draft.originalID else { return false }
+        guard let entry = model.journal.entries.first(where: { $0.id == id }) else { return true }
+        return !HistoryProtection.canEdit(entry, journal: model.journal)
+    }
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -163,19 +168,22 @@ struct EntryEditor: View {
                         }
                     }
                 }
-            }.formStyle(.grouped)
+            }.formStyle(.grouped).disabled(readOnly)
+            if readOnly { Label("Ngày đã kết thúc · Chỉ xem", systemImage: "lock.fill").foregroundStyle(.secondary) }
             if let localError { Text(localError).foregroundStyle(.red).font(.callout) }
             HStack {
-                if draft.originalID != nil { Button("Xóa", role: .destructive) { confirmDelete = true } }
+                if draft.originalID != nil && !readOnly { Button("Xóa", role: .destructive) { confirmDelete = true } }
                 Spacer()
                 Button("Hủy") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("Lưu") { save() }.buttonStyle(.borderedProminent).tint(.indigo).keyboardShortcut(.defaultAction)
+                Button("Lưu") { save() }.buttonStyle(.borderedProminent).tint(.indigo).keyboardShortcut(.defaultAction).disabled(readOnly)
             }
         }.padding(24).frame(width: 570)
             .environment(\.timeZone, model.journal.preferences.calendar.timeZone)
             .onAppear { splitDate = draft.start.addingTimeInterval(draft.end.timeIntervalSince(draft.start) / 2); secondActivity = draft.activityID }
             .alert("Xóa bản ghi này?", isPresented: $confirmDelete) {
-                Button("Xóa", role: .destructive) { model.perform { $0.entries.removeAll { $0.id == draft.originalID } }; dismiss() }
+                Button("Xóa", role: .destructive) {
+                    if model.perform({ $0.entries.removeAll { $0.id == draft.originalID } }) { dismiss() }
+                }
                 Button("Hủy", role: .cancel) {}
             } message: { Text("Bản ghi này sẽ được gỡ khỏi lịch sử hoạt động.") }
     }
@@ -189,8 +197,8 @@ struct EntryEditor: View {
             try Engine.record(&candidate, entry: first, replacing: replace)
             if split, let secondActivity { try Engine.record(&candidate, entry: Entry(start: splitDate, end: draft.end, activityID: secondActivity, note: draft.note, source: "edit"), replacing: replace) }
             try Engine.validate(candidate)
-            model.perform { $0 = candidate }
-            if model.error == nil { dismiss() }
+            try HistoryProtection.validateChange(from: model.journal, to: candidate)
+            if model.perform({ $0 = candidate }) { dismiss() }
         } catch { localError = error.localizedDescription }
     }
 }

@@ -67,11 +67,12 @@ public struct Goal: Codable, Identifiable, Equatable {
     public var direction: String // increase, limit, observe
     public var minutes: Int
     public var effectiveFrom: Date
+    public var effectiveUntil: Date? // Exclusive end for a daily goal version; nil means recurring.
     public var period: String? // Missing in older backups means a weekly goal.
     public var periodName: String { period ?? "week" }
     public var isDaily: Bool { periodName == "day" }
-    public init(activityID: UUID, direction: String, minutes: Int, effectiveFrom: Date, period: String = "week") {
-        self.activityID = activityID; self.direction = direction; self.minutes = minutes; self.effectiveFrom = effectiveFrom; self.period = period
+    public init(activityID: UUID, direction: String, minutes: Int, effectiveFrom: Date, period: String = "week", effectiveUntil: Date? = nil) {
+        self.activityID = activityID; self.direction = direction; self.minutes = minutes; self.effectiveFrom = effectiveFrom; self.period = period; self.effectiveUntil = effectiveUntil
     }
 }
 
@@ -140,6 +141,7 @@ public struct Journal: Codable, Equatable {
     public var entries: [Entry] = []
     public var skipped: [UUID] = []
     public var goals: [Goal] = []
+    public var deadlines: [DeadlinePlan]? // Absent in earlier backups.
     public var sleepReminders: SleepReminderState? // Absent in older data: use the default daily plan.
     public var sleepHistory: SleepHistory?
     public var personalHistory: PersonalActivityHistory?
@@ -148,7 +150,7 @@ public struct Journal: Codable, Equatable {
     public init() {}
     public mutating func reset(at now: Date = Date()) {
         self = Journal()
-        SleepPlan.prepareStatistics(journal: &self, on: now)
+        SleepPlan.initializeFirstDay(journal: &self, on: now)
     }
     public func activity(_ id: UUID) -> Activity? { activities.first { $0.id == id } }
     public var isRecordingPersonalActivity: Bool { sleepHistory?.active != nil || personalHistory?.active != nil }

@@ -9,6 +9,9 @@ struct WeeklyGoalsView: View {
     @State private var validationError: String?
     @State private var message: String?
     @State private var removedGoals: [Goal] = []
+    private func isPastWeek(now: Date) -> Bool {
+        model.journal.preferences.calendar.dateInterval(of: .weekOfYear, for: date)!.end <= now
+    }
     private var weekStart: Date { model.journal.preferences.calendar.dateInterval(of: .weekOfYear, for: date)!.start }
 
     var body: some View {
@@ -20,7 +23,7 @@ struct WeeklyGoalsView: View {
                     HStack {
                         Text(message).font(.callout)
                         Spacer()
-                        if !removedGoals.isEmpty { Button("Hoàn tác xóa") { undoDeletion() } }
+                        if !removedGoals.isEmpty && !isPastWeek(now: context.date) { Button("Hoàn tác xóa") { undoDeletion() } }
                         Button { self.message = nil; removedGoals = [] } label: { Image(systemName: "xmark") }.help("Đóng thông báo")
                     }.padding(12).background(.indigo.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
                 }
@@ -36,14 +39,14 @@ struct WeeklyGoalsView: View {
                         Text("Số giờ mỗi tuần").font(.caption).foregroundStyle(.secondary)
                         TextField("Ví dụ: 7", text: $hours).textFieldStyle(.roundedBorder).frame(width: 130).accessibilityLabel("Số giờ mục tiêu mỗi tuần")
                     }
-                    Button("Lưu mục tiêu tuần") { save() }.buttonStyle(.borderedProminent).tint(.indigo).disabled(activityID == nil)
+                    Button("Lưu mục tiêu tuần") { save() }.buttonStyle(.borderedProminent).tint(.indigo).disabled(activityID == nil || isPastWeek(now: context.date))
                 }
                 if let validationError { Text(validationError).font(.callout).foregroundStyle(.red) }
                 Divider()
                 Text("\(completed)/\(goals.count) mục tiêu đã hoàn thành").font(.headline)
                 if goals.isEmpty { Text("Chưa có mục tiêu tuần.").foregroundStyle(.secondary) }
                 ForEach(goals) { goal in
-                    GoalProgressRow(model: model, goal: goal, date: date, now: context.date, onDelete: delete)
+                    GoalProgressRow(model: model, goal: goal, date: date, now: context.date, onDelete: delete, canEdit: !isPastWeek(now: context.date))
                 }
             }
         }

@@ -12,9 +12,10 @@ import NhipCore
                 Label(model.status, systemImage: model.journal.runtime.enabled ? "record.circle" : "pause.circle").foregroundStyle(.secondary)
                 if let next = model.journal.runtime.nextDue { Text("Nhắc tiếp: \(model.time(next))").font(.caption) }
                 Divider()
-                Button(InterfaceSection.summary.customTitle(in: model.journal.preferences) ?? "Tổng kết tất cả thời gian") { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true; WindowManager.shared.showDashboard() }
-                Button(InterfaceSection.goals.title(in: model.journal.preferences)) { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true; WindowManager.shared.showDashboard() }
-                Button(InterfaceSection.personal.title(in: model.journal.preferences)) { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true; WindowManager.shared.showDashboard() }
+                Button(InterfaceSection.summary.customTitle(in: model.journal.preferences) ?? "Tổng kết tất cả thời gian") { model.showDeadlines = false; model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true; WindowManager.shared.showDashboard() }
+                Button(InterfaceSection.personal.title(in: model.journal.preferences)) { model.showDeadlines = false; model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true; WindowManager.shared.showDashboard() }
+                Button(InterfaceSection.goals.title(in: model.journal.preferences)) { model.showDeadlines = false; model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true; WindowManager.shared.showDashboard() }
+                Button(InterfaceSection.deadlines.title(in: model.journal.preferences)) { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = false; model.showDeadlines = true; WindowManager.shared.showDashboard() }
                 Button("Dashboard") { WindowManager.shared.showDashboard() }.keyboardShortcut("d")
                 Divider()
                 Button("Bắt đầu / Tiếp tục") { model.start() }
@@ -132,6 +133,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         Task { @MainActor in
+            AppModel.shared.showDeadlines = false
             AppModel.shared.showGoals = false
             AppModel.shared.showPersonalActivities = false
             AppModel.shared.showAllTimeSummary = true

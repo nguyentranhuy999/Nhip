@@ -129,6 +129,7 @@ public enum Engine {
         try SleepTracking.validate(j.sleepHistory, journal: j)
         try SleepPlan.validate(j.sleepReminders)
         try DashboardSelection.validate(j)
+        try Deadlines.validate(j)
         guard j.schemaVersion == 1 else { throw JournalError.invalid("Phiên bản sao lưu không được hỗ trợ.") }
         guard [5,10,15,30,60].contains(j.preferences.intervalMinutes), TimeZone(identifier: j.preferences.timezone) != nil else { throw JournalError.invalid("Cài đặt chu kỳ hoặc múi giờ không hợp lệ.") }
         guard !j.activities.isEmpty, Set(j.activities.map(\.id)).count == j.activities.count,
@@ -148,12 +149,23 @@ public enum Engine {
                   index == 0 || spans[index - 1].end <= span.start else { throw JournalError.invalid("Khoảng theo dõi không hợp lệ hoặc chồng lấn.") }
         }
         guard Set(j.goals.map(\.id)).count == j.goals.count else { throw JournalError.invalid("Trùng ID mục tiêu.") }
-        let dailyGoals = j.goals.filter(\.isDaily)
-        guard Set(dailyGoals.map(\.activityID)).count == dailyGoals.count else { throw JournalError.invalid("Mỗi hoạt động chỉ có một mục tiêu hằng ngày.") }
         for goal in j.goals {
             guard j.activity(goal.activityID) != nil, ["increase", "limit", "observe"].contains(goal.direction), goal.minutes >= 0,
                   ["day", "week"].contains(goal.periodName), goal.effectiveFrom.timeIntervalSince1970.isFinite else { throw JournalError.invalid("Mục tiêu không hợp lệ.") }
             if goal.isDaily && (!(1...1440).contains(goal.minutes) || goal.direction != "increase") { throw JournalError.invalid("Mục tiêu mỗi ngày phải từ 1 phút đến 24 giờ.") }
+            if let until = goal.effectiveUntil {
+                guard goal.isDaily, until.timeIntervalSince1970.isFinite, until > goal.effectiveFrom else {
+                    throw JournalError.invalid("Ngày kết thúc mục tiêu không hợp lệ.")
+                }
+            }
+        }
+        for versions in Dictionary(grouping: j.goals.filter(\.isDaily), by: \.activityID).values {
+            let sorted = versions.sorted { $0.effectiveFrom < $1.effectiveFrom }
+            for index in sorted.indices.dropFirst() {
+                guard let until = sorted[index - 1].effectiveUntil, until <= sorted[index].effectiveFrom else {
+                    throw JournalError.invalid("Mỗi hoạt động chỉ có một mục tiêu hằng ngày hiện hành. Không thể khôi phục khi đã có mục tiêu khác cùng thời gian.")
+                }
+            }
         }
     }
 }

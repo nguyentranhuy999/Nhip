@@ -26,12 +26,16 @@ public final class Repository {
         guard sqlite3_exec(db, sql, nil, nil, nil) == SQLITE_OK else { throw error() }
     }
     private func error() -> JournalError { .invalid("Lỗi lưu dữ liệu: \(String(cString: sqlite3_errmsg(db)))") }
-    public func load() throws -> Journal {
+    public func load(at now: Date = Date()) throws -> Journal {
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(db, "SELECT payload FROM journal WHERE id=1", -1, &statement, nil) == SQLITE_OK else { throw error() }
         defer { sqlite3_finalize(statement) }
         let status = sqlite3_step(statement)
-        if status == SQLITE_DONE { return Journal() }
+        if status == SQLITE_DONE {
+            var journal = Journal()
+            SleepPlan.initializeFirstDay(journal: &journal, on: now)
+            return journal
+        }
         guard status == SQLITE_ROW, let raw = sqlite3_column_text(statement, 0) else { throw error() }
         var j = try JSONDecoder().decode(Journal.self, from: Data(String(cString: raw).utf8))
         var checkpoint: OpaquePointer?

@@ -24,9 +24,10 @@ final class GoalTests {
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 30, at: base)
         let first = j.goals.first { $0.isDaily }!
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 60, at: at(1440))
-        XCTAssertEqual(j.goals.count, 2)
-        XCTAssertEqual(j.goals.first { $0.isDaily }?.id, first.id)
-        XCTAssertEqual(j.goals.first { $0.isDaily }?.minutes, 60)
+        XCTAssertEqual(j.goals.count, 3)
+        XCTAssertEqual(GoalReports.dailyGoals(j, at: base).first?.id, first.id)
+        XCTAssertEqual(GoalReports.dailyGoals(j, at: base).first?.minutes, 30)
+        XCTAssertEqual(GoalReports.dailyGoals(j, at: at(1440)).first?.minutes, 60)
         XCTAssertEqual(j.goals.first { !$0.isDaily }?.minutes, 180)
         try Engine.validate(j)
     }
@@ -83,7 +84,7 @@ final class GoalTests {
         try GoalReports.saveDailyGoal(&j, activityID: id, minutes: 60, at: base)
         try Engine.record(&j, entry: Entry(start: base, end: at(30), activityID: id))
         let entries = j.entries, dailyID = j.goals.first { $0.isDaily }!.id
-        let removed = GoalReports.deleteGoal(&j, id: dailyID)
+        let removed = GoalReports.deleteGoal(&j, id: dailyID, at: base)
         XCTAssertEqual(j.goals, [weekly]); XCTAssertEqual(j.entries, entries)
         try GoalReports.restoreGoals(&j, goals: removed)
         try GoalReports.restoreGoals(&j, goals: removed)

@@ -7,6 +7,7 @@ struct GoalProgressRow: View {
     let date: Date
     let now: Date
     let onDelete: (Goal) -> Void
+    var canEdit = true
 
     var body: some View {
         let activity = model.journal.activity(goal.activityID)
@@ -39,10 +40,12 @@ struct GoalProgressRow: View {
                     Text("Đã ghi nhận \(durationText(progress.seconds)) · Mục tiêu \(goal.direction == "limit" ? "tối đa" : "ít nhất") \(durationText(progress.targetSeconds))").font(.caption).foregroundStyle(.secondary)
                 }
             }
+            if canEdit {
             Button(role: .destructive) { onDelete(goal) } label: { Image(systemName: "trash").padding(5) }
                 .buttonStyle(.borderless)
                 .accessibilityLabel("Xóa mục tiêu \(goal.isDaily ? "mỗi ngày" : "tuần") \(name)")
                 .help("Xóa mục tiêu \(name)")
+            } else { Image(systemName: "lock.fill").foregroundStyle(.secondary).help("Ngày đã kết thúc · Chỉ xem") }
         }.padding(16).background(color.opacity(0.05), in: RoundedRectangle(cornerRadius: 12))
     }
 }

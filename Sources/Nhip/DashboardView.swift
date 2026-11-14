@@ -17,7 +17,9 @@ struct DashboardView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            if model.showPersonalActivities {
+            if model.showDeadlines {
+                DeadlinesView(model: model).background(Color(nsColor: .windowBackgroundColor))
+            } else if model.showPersonalActivities {
                 PersonalActivitiesView(model: model).background(Color(nsColor: .windowBackgroundColor))
             } else if model.showGoals {
                 GoalsView(model: model).background(Color(nsColor: .windowBackgroundColor))
@@ -66,32 +68,40 @@ struct DashboardView: View {
                 Image(systemName: "waveform.path").font(.title).foregroundStyle(.indigo)
                 VStack(alignment: .leading) { Text("Nhịp").font(.title.bold()); Text("Thời gian của bạn").font(.caption).foregroundStyle(.secondary) }
             }.padding(.bottom, 10)
-            VStack(spacing: 6) {
-                periodSidebarButton(.day)
-                Button { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true } label: {
-                    HStack(spacing: 12) { Image(systemName: InterfaceSection.goals.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.goals.title(in: model.journal.preferences)); Spacer() }
-                        .padding(12).background(model.showGoals ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .foregroundStyle(model.showGoals ? .indigo : .primary)
-                }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
-                Button { model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true } label: {
-                    HStack(spacing: 12) { Image(systemName: InterfaceSection.personal.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.personal.title(in: model.journal.preferences)); Spacer() }
-                        .padding(12).background(model.showPersonalActivities ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .foregroundStyle(model.showPersonalActivities ? .indigo : .primary)
-                }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
-            }
-            Divider()
-            VStack(spacing: 6) {
-                ForEach([ReportPeriod.week, .month, .year]) { item in
-                    periodSidebarButton(item)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(spacing: 6) {
+                        periodSidebarButton(.day)
+                        Button { model.showDeadlines = false; model.showAllTimeSummary = false; model.showGoals = false; model.showPersonalActivities = true } label: {
+                            HStack(spacing: 12) { Image(systemName: InterfaceSection.personal.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.personal.title(in: model.journal.preferences)); Spacer() }
+                                .padding(12).background(model.showPersonalActivities ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                                .foregroundStyle(model.showPersonalActivities ? .indigo : .primary)
+                        }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
+                        Button { model.showDeadlines = false; model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = true } label: {
+                            HStack(spacing: 12) { Image(systemName: InterfaceSection.goals.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.goals.title(in: model.journal.preferences)); Spacer() }
+                                .padding(12).background(model.showGoals ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                                .foregroundStyle(model.showGoals ? .indigo : .primary)
+                        }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
+                        Button { model.showPersonalActivities = false; model.showAllTimeSummary = false; model.showGoals = false; model.showDeadlines = true } label: {
+                            HStack(spacing: 12) { Image(systemName: InterfaceSection.deadlines.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.deadlines.title(in: model.journal.preferences)); Spacer() }
+                                .padding(12).background(model.showDeadlines ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                                .foregroundStyle(model.showDeadlines ? .indigo : .primary)
+                        }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
+                    }
+                    Divider()
+                    VStack(spacing: 6) {
+                        ForEach([ReportPeriod.week, .month, .year]) { item in
+                            periodSidebarButton(item)
+                        }
+                        Button { model.showDeadlines = false; model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true } label: {
+                            HStack(spacing: 12) { Image(systemName: InterfaceSection.summary.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.summary.title(in: model.journal.preferences)); Spacer() }
+                                .padding(12).background(model.showAllTimeSummary ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                                .foregroundStyle(model.showAllTimeSummary ? .indigo : .primary)
+                        }.buttonStyle(.plain).modifier(SidebarFocusAppearance()).help("Tổng số giờ từng hoạt động trong tất cả thời gian")
+                    }
+                    Button { WindowManager.shared.showSettings() } label: { Label(InterfaceSection.settings.title(in: model.journal.preferences), systemImage: InterfaceSection.settings.displaySymbol(in: model.journal.preferences)).lineLimit(1).truncationMode(.tail).help(InterfaceSection.settings.title(in: model.journal.preferences)) }.buttonStyle(.plain)
                 }
-                Button { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = true } label: {
-                    HStack(spacing: 12) { Image(systemName: InterfaceSection.summary.displaySymbol(in: model.journal.preferences)).frame(width: 20); sidebarTitle(InterfaceSection.summary.title(in: model.journal.preferences)); Spacer() }
-                        .padding(12).background(model.showAllTimeSummary ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                        .foregroundStyle(model.showAllTimeSummary ? .indigo : .primary)
-                }.buttonStyle(.plain).modifier(SidebarFocusAppearance()).help("Tổng số giờ từng hoạt động trong tất cả thời gian")
             }
-            Button { WindowManager.shared.showSettings() } label: { Label(InterfaceSection.settings.title(in: model.journal.preferences), systemImage: InterfaceSection.settings.displaySymbol(in: model.journal.preferences)).lineLimit(1).truncationMode(.tail).help(InterfaceSection.settings.title(in: model.journal.preferences)) }.buttonStyle(.plain)
-            Spacer()
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 7) { Circle().fill(model.journal.runtime.segmentStart != nil ? .green : .orange).frame(width: 7, height: 7); Text(model.status).font(.caption) }
                 if let due = model.journal.runtime.nextDue { Text("Nhắc tiếp lúc \(model.time(due))").font(.caption).foregroundStyle(.secondary) }
@@ -106,10 +116,10 @@ struct DashboardView: View {
         Text(title).fontWeight(.medium).lineLimit(1).truncationMode(.tail).help(title)
     }
     private func periodSidebarButton(_ item: ReportPeriod) -> some View {
-        Button { model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = false; period = item } label: {
+        Button { model.showDeadlines = false; model.showPersonalActivities = false; model.showGoals = false; model.showAllTimeSummary = false; period = item } label: {
             HStack(spacing: 12) { Image(systemName: symbol(item)).frame(width: 20); sidebarTitle(InterfaceSection(period: item).title(in: model.journal.preferences)); Spacer() }
-                .padding(12).background(!model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
-                .foregroundStyle(!model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? .indigo : .primary)
+                .padding(12).background(!model.showDeadlines && !model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? Color.indigo.opacity(0.13) : .clear, in: RoundedRectangle(cornerRadius: 10))
+                .foregroundStyle(!model.showDeadlines && !model.showPersonalActivities && !model.showGoals && !model.showAllTimeSummary && period == item ? .indigo : .primary)
         }.buttonStyle(.plain).modifier(SidebarFocusAppearance())
     }
     private var header: some View {
@@ -123,6 +133,7 @@ struct DashboardView: View {
             Spacer()
             if !model.showAllTimeSummary && period == .day {
                 Button { editor = EntryDraft(date: selectedDate, calendar: calendar, activityID: model.activeActivities.first?.id) } label: { Label("Thêm hoạt động", systemImage: "plus") }.buttonStyle(.borderedProminent).tint(.indigo)
+                    .disabled(!calendar.isDate(selectedDate, inSameDayAs: Date()))
             }
         }
     }
@@ -305,28 +316,41 @@ struct DashboardView: View {
     private var goalCompletionContent: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             let summary = GoalReports.completionSummary(model.journal, now: context.date)
-            Card(title: "Nhiệm vụ đã hoàn thành") {
-                HStack(alignment: .top, spacing: 16) {
+            Card(title: "Nhiệm vụ & deadline") {
+                HStack(alignment: .top, spacing: 12) {
                     goalCompletionMetric("Nhiệm vụ ngày", count: summary.daily, icon: "sun.max.fill", color: .indigo)
                     goalCompletionMetric("Nhiệm vụ tuần", count: summary.weekly, icon: "calendar", color: .teal)
+                    deadlineCountMetric
                 }
             }
         }
     }
     private func goalCompletionMetric(_ title: String, count: GoalCompletionCount, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: icon).font(.headline).foregroundStyle(color)
-            Text("\(count.completed)/\(count.total)").font(.system(size: 30, weight: .bold, design: .rounded)).monospacedDigit()
-            Text(count.total == 0 ? "Chưa có nhiệm vụ" : "nhiệm vụ đã hoàn thành").font(.callout).foregroundStyle(.secondary)
-            HStack {
-                Text("Tỷ lệ hoàn thành").foregroundStyle(.secondary)
-                Spacer()
-                if let rate = count.rate { Text(rate, format: .percent.precision(.fractionLength(1))).fontWeight(.semibold) }
-                else { Text("—") }
-            }.font(.callout)
+        VStack(alignment: .leading, spacing: 6) {
+            Label(title, systemImage: icon).font(.callout.weight(.semibold)).foregroundStyle(color)
+                .lineLimit(1).help(title)
+            Text("\(count.completed)/\(count.total)").font(.system(size: 26, weight: .bold, design: .rounded)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.7)
+            if let rate = count.rate {
+                Text("\(rate, format: .percent.precision(.fractionLength(1))) hoàn thành").font(.caption).foregroundStyle(.secondary)
+            } else { Text("Chưa có nhiệm vụ").font(.caption).foregroundStyle(.secondary) }
             ProgressView(value: count.rate ?? 0).tint(color)
-        }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
-            .background(color.opacity(0.07), in: RoundedRectangle(cornerRadius: 16))
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+            .background(color.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
+    }
+    private var deadlineCountMetric: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Tổng số deadline", systemImage: InterfaceSection.deadlines.displaySymbol(in: model.journal.preferences))
+                .font(.callout.weight(.semibold)).foregroundStyle(.indigo).lineLimit(1)
+            Text("\(model.journal.deadlines?.count ?? 0)").font(.system(size: 26, weight: .bold, design: .rounded)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.7)
+            Button("Xem chi tiết") {
+                model.showPersonalActivities = false; model.showGoals = false
+                model.showAllTimeSummary = false; model.showDeadlines = true
+            }.buttonStyle(.borderless).font(.caption).tint(.indigo)
+            Color.clear.frame(height: 4).accessibilityHidden(true)
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.indigo.opacity(0.07), in: RoundedRectangle(cornerRadius: 12))
     }
     private var onboarding: some View {
         Card(title: "Chào bạn, đây là Nhịp") {
@@ -385,7 +409,9 @@ struct DashboardView: View {
             }
             Spacer()
             Text(durationText(overlap(entry.start, entry.end, range.start, range.end))).font(.callout).foregroundStyle(.secondary)
-            Button { editor = EntryDraft(entry: entry) } label: { Image(systemName: "pencil") }.help("Sửa hoặc tách khoảng")
+            if HistoryProtection.canEdit(entry, journal: model.journal) {
+                Button { editor = EntryDraft(entry: entry) } label: { Image(systemName: "pencil") }.help("Sửa hoặc tách khoảng")
+            } else { Image(systemName: "lock.fill").foregroundStyle(.secondary).help("Ngày đã kết thúc · Chỉ xem") }
         }
     }
     private var trendContent: some View {
